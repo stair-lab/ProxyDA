@@ -1,144 +1,144 @@
-from .kernel_utils import *
-from .cme import ConditionalMeanEmbed
+"""implements the bridge function h0"""
+#Author: Katherine Tsai <kt14@illinois.edu>
+#License: MIT
+
+from .kernel_utils import hadamard_prod, ker_mat, mat_mul, modif_kron, stage2_weights, mat_trans, cal_l_yw
 import numpy as np
 import jax.numpy as jnp
 import jax.scipy.linalg as jsla
 import time
-import scipy.sparse as ss
+from jax import vmap
 
 
-class Bridge_h0:
-  """ Construct the bridge function h0 = \sum_i alpha_ij \phi(w_i)\otimes\phi(c_j)
-      vec(alpha)=(Gamma_xc\odot I)(n2*lam I + \Sigma)^{-1}y, alpha shape=(n1_samples, n2_samples)
-      Gamma_xc = mu_w_cx.get_mean_embed(x,c)['Gamma'] #(n1_samples, n2_samples)
-      \Sigma = (Gamma_xc^T K_ww Gamma_xc)K_cc
+class BridgeH0:
+  """ Construct the bridge function h0.
   """
-  def __init__(self, Cw_xc, covars, Y, lam, scale=1., method='original', lam_min=-4, lam_max=-1,  kernel_dict=None):
+  def __init__(self,
+              cme_w_xc,
+              covars,
+              y,
+              lam,
+              scale=1.,
+              method="original",
+              lam_min=-4,
+              lam_max=-1,
+              kernel_dict=None):
     """Initiate the parameters
     Args:
-      Cw_xc: object, ConditionalMeanEmbed
-      covars: covariates, dict {"C": ndarray shape=(n2_samples, n1_features), "X": ndarray shape=(n2_samples, n2_features)}
-      Y: labels, (n2_samples,)
+      cme_w_xc: object, ConditionalMeanEmbed
+      covars: covariates, dict {"C": ndarray shape=(n2_samples, n1_features), 
+                                "X": ndarray shape=(n2_samples, n2_features)}
+      y: labels, (n2_samples,)
       lam: reuglarization parameter, lam
       scale: kernel length scale, float
       method: approximation method, str
       'original' for linear solver, 'nystrom' for Nystrom approximation
       lam_min: minimum of lambda (log space) for hyperparameter tuning, float
       lam_max: maximum of lambda (log space) for hyperparameter tuning, float
+      kernel_dict: specify kernel functions, dict
     """
     t1 = time.time()
     self.sc = scale
-    n_sample = Y.shape[0]
+    n_sample = y.shape[0]
     # construct A matrix
-    C = covars["C"]
+    c = covars["C"]
 
     self.lam_max = lam_max
     self.lam_min = lam_min
 
-    if kernel_dict == None:
+    if kernel_dict is None:
       kernel_dict = {}
-      kernel_dict['C'] = 'rbf'
+      kernel_dict["C"] = "rbf"
 
-    K_CC = ker_mat(jnp.array(C), jnp.array(C), kernel=kernel_dict['C'], scale=self.sc)
-    self.C = C
-    params = Cw_xc.get_params()
-    W = params["Y"]
+    ker_cc = ker_mat(jnp.array(c), jnp.array(c),
+                     kernel=kernel_dict["C"],
+                     scale=self.sc)
+    self.c = c
+    params = cme_w_xc.get_params()
+    w = params["Y"]
     self.w_sc = params["scale"]
-    self.W = W
-    kernel_dict['W'] = params['kernel_dict']['Y']
-    K_WW = ker_mat(jnp.array(W), jnp.array(W), kernel=kernel_dict['W'], scale=params["scale"])
+    self.w = w
+    kernel_dict["W"] = params["kernel_dict"]["Y"]
+    ker_ww = ker_mat(jnp.array(w), jnp.array(w),
+                     kernel=kernel_dict["W"],
+                     scale=params["scale"])
     self.kernel_dict = kernel_dict
 
     assert(set(params["Xlist"]) == set(covars.keys()))
-    # construct Gamma_xc matrix
-    Gamma_xc = Cw_xc.get_mean_embed(covars)["Gamma"] #shape = (n1_samples, n2_samples)
-    
+    # construct gamma_xc matrix
+    #shape = (n1_samples, n2_samples)
+    gamma_xc = cme_w_xc.get_mean_embed(covars)["Gamma"]
 
     # construct sigma
-    Sigma = Hadamard_prod(mat_mul(mat_mul(Gamma_xc.T, K_WW), Gamma_xc), K_CC)
-    
-    if lam == None:
+    sigma = hadamard_prod(mat_mul(mat_mul(gamma_xc.T, ker_ww),
+                                  gamma_xc), ker_cc)
+
+    if lam is None:
       #implement parameter selection
       #use random subsample
-      lam = self.model_select(n_sample, K_WW, K_CC, Gamma_xc, Y)
-
-
+      lam = self.model_select(n_sample, ker_ww, ker_cc, gamma_xc, y)
 
     #print("rank of sigma", jnp.linalg.matrix_rank(Sigma))
-    F = Sigma + n_sample*lam*jnp.eye(n_sample)
+    f_mat = sigma + n_sample*lam*jnp.eye(n_sample)
     #print("F is pd", is_pos_def(F))
-    
+
     t2 = time.time()
-
-
-    
-    #using linear solver
-    
-    
-    if method == 'nystrom':
-      print('use Nystrom method to estimate h0')
-      #q = min(2*int(np.sqrt(n_sample)), int(n_sample/10))
-      q = min(250, n_sample)
-      select_id = np.random.choice(n_sample, q, replace=False)
-      
-      K_q = Sigma[select_id, :][:, select_id]
-      K_nq = Sigma[:, select_id]
-      
-
-      inv_Kq_sqrt =  jnp.array(truncate_sqrtinv(K_q))
-      Q = K_nq.dot(inv_Kq_sqrt)
-
-      inv_temp = jsla.solve(lam*n_sample*jnp.eye(q)+Q.T.dot(Q), jnp.eye(q))
-      if jnp.isnan(inv_temp).any():
-        print("inv_temp is nan")         
-      aprox_K = (jnp.eye(n_sample)-(Q.dot(inv_temp)).dot(Q.T))/(lam*n_sample)
-
-      vec_alpha = mat_mul(aprox_K, Y)
-
-    elif method == 'original':
-      print('use linear solver to estimate h0')
-      vec_alpha = jsla.solve(F, Y)
-
-    
+    if method == "original":
+      print("use linear solver to estimate h0")
+      vec_alpha = jsla.solve(f_mat, y)
     t25 = time.time()
 
-    
-    vec_alpha = stage2_weights(Gamma_xc, vec_alpha)
-    
+    vec_alpha = stage2_weights(gamma_xc, vec_alpha)
+
     t3 = time.time()
 
-    print("processing time: matrix preparation:%.4f solving inverse:%.4f, %.4f"%(t2-t1, t25-t2, t3-t25))
+    print(f"time: matrix preparation:{t2-t1} solve inverse:{t25-t2}, {t3-t25}")
     self.alpha = vec_alpha.reshape((-1, n_sample)) #shape=(n1_sample, n2_sample)
 
-  def model_select(self, n_sample, K_WW, K_CC, Gamma_xc, Y):
-      
-      if (n_sample >= 1000) or (K_WW.shape[0]>1000):
-        select_id = np.random.choice(n_sample, min(n_sample, 1000), replace=False)
-        select_id2 = np.random.choice(K_WW.shape[0], min(K_WW.shape[0], 1000), replace=False)
-        
-        K_sub_WW = K_WW[select_id2,:]
-        K_sub_WW = K_sub_WW[:, select_id2]
+  def model_select(self, n_sample, ker_ww, ker_cc, gamma_xc, y):
+    """ model selection for lambda
+      Args:
+        n_sample: number of samples, int
+        ker_ww: Gram matrix of W, ndarray
+        ker_cc: Gram matrix of C, ndarray
+        gamma_xc: coefficient matrix, ndarray
+        y: response, ndarray
+    """
+    if (n_sample >= 1000) or (ker_ww.shape[0]>1000):
+      select_id = np.random.choice(n_sample, min(n_sample, 1000), replace=False)
+      select_id2 = np.random.choice(ker_ww.shape[0],
+                                    min(ker_ww.shape[0], 1000),
+                                    replace=False)
 
-        K_sub_CC = K_CC[select_id, :]
-        K_sub_CC = K_sub_CC[:, select_id]
+      ker_sub_ww = ker_ww[select_id2,:]
+      ker_sub_ww = ker_sub_ww[:, select_id2]
 
-        Y_sub = Y[select_id,...]
+      ker_sub_cc = ker_cc[select_id, :]
+      ker_sub_cc = ker_sub_cc[:, select_id]
 
-        Gamma_sub_xc = Gamma_xc[select_id2, :]
-        Gamma_sub_xc = Gamma_sub_xc[:, select_id]
-      else:
-        K_sub_WW = K_WW
-        K_sub_CC = K_CC
-        Y_sub = Y
-        Gamma_sub_xc = Gamma_xc
+      y_sub = y[select_id,...]
 
-      sub_Sigma =  Hadamard_prod(mat_mul(mat_mul(Gamma_sub_xc.T, K_sub_WW), Gamma_sub_xc), K_sub_CC)
-      D_t = modif_kron(mat_mul(K_sub_WW, Gamma_sub_xc), K_sub_CC) 
-      mk_gamma_I=mat_trans(modif_kron(Gamma_sub_xc, jnp.eye(1000)))
-      lam, loo2 = cal_l_yw(D_t, sub_Sigma, mk_gamma_I , Y_sub, self.lam_min, self.lam_max)
-      print('selected lam of h_0:', lam)
+      gamma_sub_xc = gamma_xc[select_id2, :]
+      gamma_sub_xc = gamma_sub_xc[:, select_id]
+    else:
+      ker_sub_ww = ker_ww
+      ker_sub_cc = ker_cc
+      y_sub = y
+      gamma_sub_xc = gamma_xc
 
-      return lam
+    sub_sigma = hadamard_prod(mat_mul(mat_mul(gamma_sub_xc.T, ker_sub_ww),
+                                            gamma_sub_xc), ker_sub_cc)
+
+    d_t = modif_kron(mat_mul(ker_sub_ww, gamma_sub_xc), ker_sub_cc)
+
+    mk_gamma_i = mat_trans(modif_kron(gamma_sub_xc, jnp.eye(1000)))
+
+    lam, _ = cal_l_yw(d_t, sub_sigma, mk_gamma_i , y_sub,
+                      self.lam_min, self.lam_max)
+
+    print("selected lam of h_0:", lam)
+
+    return lam
 
   def __call__(self, new_w, new_c):
     """return h0(w,c)
@@ -150,203 +150,147 @@ class Bridge_h0:
     """
     # compute K_newWW
 
-    K_WnewW = ker_mat(jnp.array(self.W), jnp.array(new_w), kernel=self.kernel_dict['W'], scale=self.w_sc) #(n1_sample, n3_sample)
+    ker_wnew = ker_mat(jnp.array(self.w), jnp.array(new_w),
+                      kernel=self.kernel_dict["W"],
+                      scale=self.w_sc) #(n1_sample, n3_sample)
 
 
     # compute K_newCC
-    K_CnewC = ker_mat(jnp.array(self.C), jnp.array(new_c), kernel=self.kernel_dict['C'], scale=self.sc) #(n2_sample, n3_sample)
+    ker_cnewc = ker_mat(jnp.array(self.c), jnp.array(new_c),
+                      kernel=self.kernel_dict["C"],
+                      scale=self.sc) #(n2_sample, n3_sample)
 
-    print(K_WnewW.shape, K_CnewC.shape, self.alpha.shape)
-    h_wc = fn = lambda kc, kw: jnp.dot(mat_mul(self.alpha, kc), kw)
+    print(ker_wnew.shape, ker_cnewc.shape, self.alpha.shape)
+
+    def h_wc(kc, kw):
+      return jnp.dot(mat_mul(self.alpha, kc), kw)
     v = vmap(h_wc, (1,1))
-    return v(K_CnewC, K_WnewW)
+    return v(ker_cnewc, ker_wnew)
 
-  def get_EYx(self, new_x, cme_WC_x):
-    """ when computing E[Y|c,x]=<h0, phi(c)\otimes mu_w|x,c>
+  def get_expy_x(self, new_x, cme_wc_x):
+    """ computing E[Y|c,x]=<h0, phi(c) otimes mu_w|x,c>
     Args:
       new_x: ndarray shape=(n4_samples, n_features)
-      cme_WC_x: ConditionalMeanEmbed
+      cme_wc_x: ConditionalMeanEmbed
     """
 
     t1 = time.time()
-    params = cme_WC_x.get_mean_embed(new_x)
+    params = cme_wc_x.get_mean_embed(new_x)
     t2 = time.time()
-    if len(self.W.shape) == 1:
+    if len(self.w.shape) == 1:
       w_features = 1
     else:
-      w_features = self.W.shape[1]
+      w_features = self.w.shape[1]
 
-    if len(self.C.shape) == 1:
+    if len(self.c.shape) == 1:
       c_features = 1
     else:
-      c_features = self.C.shape[1]
+      c_features = self.c.shape[1]
 
     # params["Y"] shape=(n1_samples, w_features+c_features)
     new_w = params["Y"][:, 0:w_features]
     new_c = params["Y"][:, w_features:w_features+c_features]
     # Gamma shape=(n1_samples, n4_samples)
-    kcTalphakw = self.__call__(new_w, new_c)
+    kctalphakw = self(new_w, new_c)
     t3 = time.time()
-    fn = lambda x: jnp.dot(kcTalphakw, x)
+
+    def fn(x):
+      return jnp.dot(kctalphakw, x)
     v = vmap(fn, (1))
 
     result = v(params["Gamma"])
     t4 = time.time()
 
-    print("inference time: %.4f/%.4f/%.4f"%(t2-t1, t3-t2, t4-t3))
-    return result
-
-  def get_EYx_independent(self, new_x, cme_w_x, cme_c_x):
-    """ E[Y | x] = <h0, cme_w_x \otimes cme_c_x>
-    Args:
-      new_x: ndarray shape=(n5_samples, n_features)
-      cme_w_x: ConditionalMeanEmbed, object
-      cme_c_x: CME_m0, object
-    """
-    t1 = time.time()
-    #params_w = cme_w_x.get_params()
-    new_w = cme_w_x.Y #params_w["Y"]
-    Gamma_w = cme_w_x.get_mean_embed(new_x)['Gamma'] #(n3_samples, n5_samples)
-
-
-    #params_c = cme_c_x.get_params()
-    new_c = cme_c_x.C #params_c["C"]
-
-    Gamma_c = cme_c_x.get_A_operator(cme_w_x, new_x)['beta'].T #(n4_sample, n5_sample)
-    t2 = time.time()
-    # compute K_newWW
-    K_WnewW = ker_mat(jnp.array(self.W), jnp.array(new_w), kernel=self.kernel_dict['W'], scale=self.w_sc) #(n1_sample, n3_sample)
-    # compute K_newCC
-    K_CnewC = ker_mat(jnp.array(self.C), jnp.array(new_c), kernel=self.kernel_dict['C'], scale=self.sc) #(n2_sample, n4_sample)
-
-    kcTalphakw = mat_mul(K_WnewW.T, mat_mul(self.alpha,K_CnewC)) #(n3_sample,  n4_sample)
-    t3 = time.time()
-
-    h_wc = fn = lambda b1, b2: jnp.dot(mat_mul(kcTalphakw, b1), b2)
-    v = vmap(h_wc, (1,1))
-    result = v(Gamma_c, Gamma_w)
-    t4 = time.time()
-
-    print("inference time: %.4f/%.4f/%.4f"%(t2-t1, t3-t2, t4-t3))
-    return result
-
-  def get_EYx_independent_cme(self, new_x, cme_w_x, cme_c_x):
-    """ E[Y | x] = <h0, cme_w_x \otimes cme_c_x>
-    Args:
-      new_x: ndarray shape=(n5_samples, n_features)
-      cme_w_x: ConditionalMeanEmbed, object
-      cme_c_x: ConditionalMeanEmbed, object
-    """
-    t1 = time.time()
-    #params_w = cme_w_x.get_params()
-    new_w = cme_w_x.Y #params_w["Y"]
-    Gamma_w = cme_w_x.get_mean_embed(new_x)['Gamma'] #(n3_samples, n5_samples)
-
-
-    #params_c = cme_c_x.get_params()
-    new_c = cme_c_x.Y #params_c["Y"]
-    Gamma_c = cme_c_x.get_mean_embed(new_x)['Gamma'] #(n4_sample, n5_sample)
-    t2 = time.time()
-    # compute K_newWW
-    K_WnewW = ker_mat(jnp.array(self.W), jnp.array(new_w), kernel=self.kernel_dict['W'], scale=self.w_sc) #(n1_sample, n3_sample)
-    # compute K_newCC
-    K_CnewC = ker_mat(jnp.array(self.C), jnp.array(new_c), kernel=self.kernel_dict['C'], scale=self.sc) #(n2_sample, n4_sample)
-
-    kwTalphakc = mat_mul(K_WnewW.T, mat_mul(self.alpha,K_CnewC)) #(n3_sample,  n4_sample)
-    t3 = time.time()
-
-    h_wc = fn = lambda b1, b2: jnp.dot(mat_mul(kwTalphakc, b1), b2)
-    v = vmap(h_wc, (1,1))
-    result = v(Gamma_c, Gamma_w)
-
-    t4 = time.time()
-
-    print("inference time: %.4f/%.4f/%.4f"%(t2-t1, t3-t2, t4-t3))
+    print(f"inference time: {t2-t1}/{t3-t2}/{t4-t3}")
     return result
 
 
-class Bridge_h0_classification(Bridge_h0):
-
-
-  def __init__(self, Cw_xc, covars, Y, lam, scale=1., method='original', lam_min=-4, lam_max=-1,  kernel_dict=None):
+class BridgeH0CLF(BridgeH0):
+  """ Construct the bridge function h0 for classification.
+  """
+  def __init__(self,
+               cme_w_xc,
+               covars,
+               y,
+               lam,
+               scale=1.,
+               method="original",
+               lam_min=-4,
+               lam_max=-1,
+               kernel_dict=None):
     """Initiate the parameters
     Args:
-      Cw_xc: object, ConditionalMeanEmbed
-      covars: covariates, dict {"C": ndarray shape=(n2_samples, n1_features), "X": ndarray shape=(n2_samples, n2_features)}
+      cme_w_xc: object, ConditionalMeanEmbed
+      covars: covariates, dict {"C": ndarray shape=(n2_samples, n1_features),
+                                "X": ndarray shape=(n2_samples, n2_features)}
       Y: labels, (n2_samples,)
       lam: reuglarization parameter, lam
       scale: kernel length scale, float
       method: approximation method, str
-      'original' for linear solver, 'nystrom' for Nystrom approximation
       lam_min: minimum of lambda (log space) for hyperparameter tuning, float
       lam_max: maximum of lambda (log space) for hyperparameter tuning, float
+      kernel_dict: specify kernel functions, dict
     """
     t1 = time.time()
     self.sc = scale
-    n_sample = Y.shape[0]
+    n_sample = y.shape[0]
     # construct A matrix
-    C = covars["C"]
+    c = covars["C"]
 
     self.lam_max = lam_max
     self.lam_min = lam_min
 
-    if kernel_dict == None:
+    if kernel_dict is None:
       kernel_dict = {}
-      kernel_dict['C'] = 'rbf'
+      kernel_dict["C"] = "rbf"
 
-    K_CC = ker_mat(jnp.array(C), jnp.array(C), kernel=kernel_dict['C'], scale=self.sc)
-    self.C = C
-    params = Cw_xc.get_params()
-    W = params["Y"]
+    ker_cc = ker_mat(jnp.array(c), jnp.array(c),
+                     kernel=kernel_dict["C"],
+                     scale=self.sc)
+    self.c = c
+    params = cme_w_xc.get_params()
+    w = params["Y"]
     self.w_sc = params["scale"]
-    self.W = W
-    kernel_dict['W'] = params['kernel_dict']['Y']
-    K_WW = ker_mat(jnp.array(W), jnp.array(W), kernel=kernel_dict['W'], scale=params["scale"])
+    self.w = w
+    kernel_dict["W"] = params["kernel_dict"]["Y"]
+    ker_ww = ker_mat(jnp.array(w), jnp.array(w),
+                     kernel=kernel_dict["W"],
+                     scale=params["scale"])
+
     self.kernel_dict = kernel_dict
 
     assert(set(params["Xlist"]) == set(covars.keys()))
-    # construct Gamma_xc matrix
-    Gamma_xc = Cw_xc.get_mean_embed(covars)["Gamma"] #shape = (n1_samples, n2_samples)
-    
+    # construct gamma_xc matrix
+    gamma_xc = cme_w_xc.get_mean_embed(covars)["Gamma"]
+    #shape = (n1_samples, n2_samples)
 
     # construct sigma
-    Sigma = Hadamard_prod(mat_mul(mat_mul(Gamma_xc.T, K_WW), Gamma_xc), K_CC)
-    
+    sigma = hadamard_prod(mat_mul(mat_mul(gamma_xc.T, ker_ww), gamma_xc),
+                          ker_cc)
 
-    if lam == None:
+
+    if lam is None:
       #implement parameter selection
       #use random subsample
-      lam = self.model_select(n_sample, K_WW, K_CC, Gamma_xc, Y)
+      lam = self.model_select(n_sample, ker_ww, ker_cc, gamma_xc, y)
 
-
-    #print("rank of sigma", jnp.linalg.matrix_rank(Sigma))
-    F = Sigma + n_sample*lam*jnp.eye(n_sample)
-    #print("F is pd", is_pos_def(F))
-    
+    f_mat = sigma + n_sample*lam*jnp.eye(n_sample)
     t2 = time.time()
 
-    
     #using linear solver
-    
-    
 
-    print('use linear solver to estimate h0')
-    vec_alpha = jsla.solve(F, Y)
+    print("use linear solver to estimate h0")
+    vec_alpha = jsla.solve(f_mat, y)
     t25 = time.time()
-    fn = lambda a: stage2_weights(Gamma_xc, a).reshape((-1, n_sample))
+
+    def fn(a):
+      return stage2_weights(gamma_xc, a).reshape((-1, n_sample))
     parallel_stage2 = vmap(fn, (1))
     self.alpha = parallel_stage2(vec_alpha).transpose((1,2,0))
 
-    
-    
 
-    
-    #vec_alpha = stage2_weights(Gamma_xc, vec_alpha)
-    
     t3 = time.time()
-    print("processing time: matrix preparation:%.4f solving inverse:%.4f, %.4f"%(t2-t1, t25-t2, t3-t25))
-    #self.alpha = vec_alpha.reshape((-1, n_sample)) #shape=(n1_sample, n2_sample)
-
+    print(f"time: matrix preparation:{t2-t1} solve inverse:{t25-t2}, {t3-t25}")
 
   def __call__(self, new_w, new_c):
     """return h0(w,c)
@@ -356,52 +300,59 @@ class Bridge_h0_classification(Bridge_h0):
     Returns:
         h0(w,c): ndarray shape = (n3_samples)
     """
-    # compute K_newWW
-    K_WnewW = ker_mat(jnp.array(self.W), jnp.array(new_w), kernel=self.kernel_dict['W'], scale=self.w_sc) #(n1_sample, n3_sample)
+    # compute ker_wneww
+    ker_wneww = ker_mat(jnp.array(self.w), jnp.array(new_w),
+                      kernel=self.kernel_dict["W"],
+                      scale=self.w_sc) #(n1_sample, n3_sample)
 
 
-    # compute K_newCC
-    K_CnewC = ker_mat(jnp.array(self.C), jnp.array(new_c), kernel=self.kernel_dict['C'], scale=self.sc) #(n2_sample, n3_sample)
+    # compute ker_cnewc
+    ker_cnewc = ker_mat(jnp.array(self.c), jnp.array(new_c),
+                      kernel=self.kernel_dict["C"],
+                      scale=self.sc) #(n2_sample, n3_sample)
 
     n_categories = self.alpha.shape[2]
 
-    h_wc = lambda kc,kw : vmap(lambda d: jnp.dot(mat_mul(self.alpha[:,:, d], kc), kw))(jnp.arange(n_categories))
-    #h_wc = lambda d: vmap(lambda kc, kw: jnp.dot(mat_mul(self.alpha[:,:, d], kc), kw), (1,1))
+    def h_wc(kc,kw):
+      def temp_fun(d):
+        return jnp.dot(mat_mul(self.alpha[:,:, d], kc), kw)
+      return vmap(temp_fun)(jnp.arange(n_categories))
 
-    outer_v = vmap(h_wc, (1,1))(K_CnewC, K_WnewW)
+    outer_v = vmap(h_wc, (1,1))(ker_cnewc, ker_wneww)
     return outer_v #(n3_samples, outer)
 
-  def get_EYx(self, new_x, cme_WC_x):
-    """ when computing E[Y|c,x]=<h0, phi(c)\otimes mu_w|x,c>
+  def get_exp_y_x(self, new_x, cme_wc_x):
+    """ when computing E[Y|c,x]=<h0, phi(c) otimes mu_w|x,c>
     Args:
       new_x: ndarray shape=(n4_samples, n_features)
-      cme_WC_x: ConditionalMeanEmbed
+      cme_wc_x: ConditionalMeanEmbed
     """
 
     t1 = time.time()
-    params = cme_WC_x.get_mean_embed(new_x)
+    params = cme_wc_x.get_mean_embed(new_x)
     t2 = time.time()
-    if len(self.W.shape) == 1:
+    if len(self.w.shape) == 1:
       w_features = 1
     else:
-      w_features = self.W.shape[1]
+      w_features = self.w.shape[1]
 
-    if len(self.C.shape) == 1:
+    if len(self.c.shape) == 1:
       c_features = 1
     else:
-      c_features = self.C.shape[1]
+      c_features = self.c.shape[1]
 
     # params["Y"] shape=(n1_samples, w_features+c_features)
     new_w = params["Y"][:, 0:w_features]
     new_c = params["Y"][:, w_features:w_features+c_features]
     # Gamma shape=(n1_samples, n4_samples)
-    kcTalphakw = self.__call__(new_w, new_c)
+    kctalphakw = self(new_w, new_c)
     t3 = time.time()
     #fn = lambda x: jnp.dot(kcTalphakw, x)
     #v = vmap(fn, (1))
 
-    result = mat_mul(kcTalphakw.T, params["Gamma"]).T #(n4_samples, n_categories)
+    result = mat_mul(kctalphakw.T, params["Gamma"]).T
+    #(n4_samples, n_categories)
     t4 = time.time()
 
-    print("inference time: %.4f/%.4f/%.4f"%(t2-t1, t3-t2, t4-t3))
+    print(f"inference time: {t2-t1}/{t3-t2}/{t4-t3}")
     return result
