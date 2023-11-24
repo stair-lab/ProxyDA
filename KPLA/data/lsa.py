@@ -15,7 +15,6 @@
 
 """Define simulators for synthetic data for a causal generative process with latent confounders, mediating concepts, and proxies."""
 
-from typing import Optional, Union
 
 import jax
 import numpy as np
@@ -398,7 +397,7 @@ class MultiEnvMultiWSimulator(Simulator):
     if p_u is None:
       p_u = self.param_dict['p_u']
 
-    u = np.random.binomial(1, p_u[i], size=self.param_dict['num_samples'])
+    u = np.random.binomial(1, p_u[1], size=self.param_dict['num_samples'])
     u_one_hot = OneHotEncoder(sparse=False).fit_transform(u.reshape(-1, 1))
 
     ## Generate w
@@ -541,13 +540,9 @@ def from_U_to_Z(U, seed, num_samples):
             size=num_samples))
 
   return Z + U
-  
-
-
 
 def generate_multienv_data_continuous(p_u, seed, num_samples, partition_dict, param_dict=None):
-  
-  
+
   sample_dict = generate_data(p_u, seed, num_samples, partition_dict, param_dict=None)
   slice_keys = sample_dict.keys()
   for key in slice_keys:
@@ -555,9 +550,4 @@ def generate_multienv_data_continuous(p_u, seed, num_samples, partition_dict, pa
     n_s = sample_dict[key]['u'].shape[0]
     sample_dict[key]['Z'] = from_U_to_Z(sample_dict[key]['u'], seed, n_s)
 
-  
-  
   return sample_dict
-
-
-
