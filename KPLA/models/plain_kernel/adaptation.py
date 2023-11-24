@@ -14,7 +14,7 @@ from .bridge_h0 import BridgeH0, BridgeH0CLF
 from .kernel_utils import flatten
 
 
-class FUllADAPT(KernelMethod):
+class FullAdapt(KernelMethod):
   """
   Adaptation setting: observe (W,X,Y,C) from the source,
   (W,X,C) from the target
@@ -57,8 +57,8 @@ class FUllADAPT(KernelMethod):
       covars['X'] = jnp.array(train_data['X'])
       covars['C'] = jnp.array(train_data['C'])
 
-      cme_w_xc = ConditionalMeanEmbed(Y=jnp.array(train_data['W']),
-                                      X=covars,
+      cme_w_xc = ConditionalMeanEmbed(y=jnp.array(train_data['W']),
+                                      x=covars,
                                       lam=self.lam_set['cme'],
                                       kernel_dict=self.kernel_dict['cme_w_xc'],
                                       scale=self.sc,
@@ -86,8 +86,8 @@ class FUllADAPT(KernelMethod):
       wc = jnp.hstack((w, c))
 
 
-      cme_wc_x = ConditionalMeanEmbed(Y=wc,
-                                      X=covars,
+      cme_wc_x = ConditionalMeanEmbed(y=wc,
+                                      x=covars,
                                       lam=self.lam_set['cme'],
                                       kernel_dict=self.kernel_dict['cme_wc_x'],
                                       scale=self.sc,

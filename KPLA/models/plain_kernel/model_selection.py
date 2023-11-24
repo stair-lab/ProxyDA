@@ -13,7 +13,7 @@ import numpy as np
 import jax.numpy as jnp
 from itertools import product
 from models.plain_kernel.adaptation import FullAdapt
-from models.plain_kernel.multienv_adaptation import multienv_adapt, multienv_adapt_categorical
+from models.plain_kernel.multienv_adaptation import MultiEnvAdapt
 
 
 def tune_adapt_model_cv(source_train:  dict,
@@ -184,7 +184,7 @@ def tune_multienv_adapt_model(source_train_list: list,
                               source_val_list:   list,
                               method_set:        dict,
                               kernel_dict:       dict,
-                              models = multienv_adapt,
+                              models = MultiEnvAdapt,
                               task="r",
                               n_params=5,
                               min_log=-4,

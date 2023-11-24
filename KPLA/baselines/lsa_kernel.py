@@ -1,3 +1,8 @@
+"""
+LSA-spectral approach
+clone from: 
+https://github.com/google-research/google-research/tree/master/latent_shift_adaptation/latent_shift_adaptation
+"""
 #Author: Katherine Tsai <kt14@illinois.edu>
 #License: MIT
 
