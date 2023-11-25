@@ -65,8 +65,10 @@ os.makedirs(path, exist_ok=True)
 RESULTS = {'args': vars(args), 'exp_path': path, 'hparams': {}}
 ############################################################################
 # Load dataset
-data_file = '/homes/oes2/mimic_experiments/datasets/dsprites-dataset/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz'
-dataset_zip = np.load(data_file, allow_pickle=True, encoding='bytes')
+data_path = '../../../KPLA/data/dSprite/'
+dataset_zip = np.load(data_path+'/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz',
+                      allow_pickle=True,
+                      encoding='bytes')
 
 print('Keys in the dataset:', dataset_zip.keys())
 imgs = dataset_zip['imgs']

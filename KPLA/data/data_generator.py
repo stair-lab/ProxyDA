@@ -7,7 +7,7 @@ data generator of multi-source classification task
 
 import jax.numpy as jnp
 import numpy as np
-from lsa import generate_multienv_data, tidy_w
+from data_lsa import generate_multienv_data, tidy_w
 
 
 

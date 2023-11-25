@@ -64,7 +64,10 @@ os.makedirs(path, exist_ok=True)
 RESULTS = {'args': vars(args), 'exp_path': path, 'hparams': {}}
 ############################################################################
 # Load dataset
-dataset_zip = np.load('/home/oes2/mimic_experiments/datasets/dsprites-dataset/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz', allow_pickle=True, encoding='bytes')
+data_path = '../../../KPLA/data/dSprite/'
+dataset_zip = np.load(data_path+'/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz',
+                      allow_pickle=True,
+                      encoding='bytes')
 
 print('Keys in the dataset:', dataset_zip.keys())
 imgs = dataset_zip['imgs']
@@ -126,12 +129,12 @@ elif args.dist_2 == 'beta':
 else:
   raise NotImplementedError()
 
-print("SOURCE")
+print('SOURCE')
 source_train, source_val, source_test, source_imgs_dict = generate_samples(U_s,
   A, metadata, pos_X_basis, pos_X_basis_idx,
   pos_Y_basis, pos_Y_basis_idx, imgs, imgs_basis)
 
-print("TARGET")
+print('TARGET')
 target_train, target_val, target_test, target_imgs_dict = generate_samples(U_t,
 A, metadata, pos_X_basis, pos_X_basis_idx,
   pos_Y_basis, pos_Y_basis_idx, imgs, imgs_basis)
