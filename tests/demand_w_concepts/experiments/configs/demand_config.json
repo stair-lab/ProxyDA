@@ -1,0 +1,17 @@
+{
+  "n_repeat": 1,
+  "data": {
+      "name" : "demand",
+      "n_sample" : 5000
+  },
+  "model": {
+      "name": "dfa",
+      "lam_set": {"cme": 0.1, "h0": 0.1},
+      "cme_iter": 30,
+      "h0_iter": 1,
+      "n_epoch": 100,
+      "w_weight_decay": 0.1,
+      "x_weight_decay": 0.1,
+      "c_weight_decay": 0.1
+  }
+}

@@ -14,8 +14,7 @@ import logging
 from .torch_reg_utils import linear_reg_loss
 from .multienv_deep_model import DeepMultiEnvGraph
 from .nn_structure import build_extractor
-from KPLA.data.data_class import  split_train_data
-
+from KPLA.data.data_class import  multi_split_train_data
 import matplotlib.pyplot as plt
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -121,7 +120,7 @@ class MultiEnvDeepKernelTrainer:
         plot: Boolean
     """
     if split:
-      train_set = split_train_data(source_traindata, 2)
+      train_set = multi_split_train_data(source_traindata, 2)
       source_traindata2 = train_set[0]
       source_traindata3 = train_set[1]
       if self.gpu_flg:

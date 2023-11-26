@@ -8,7 +8,7 @@ Date modified: Sep 19 2023
 import numpy as np
 from numpy.random import default_rng
 
-from .data_class import dfaDataSet
+from .data_class import dfaDataSet, mdfaDataSet
 
 
 def psi(t: np.ndarray) -> np.ndarray:
@@ -17,6 +17,9 @@ def psi(t: np.ndarray) -> np.ndarray:
 def generate_demand(n_sample: int, rng):
   demand = rng.uniform(0, 10, n_sample)     #U
   return demand
+
+def cal_outcome(price, views, demand):
+  return np.clip(np.exp((views - price) / 10.0), None, 5.0) * price - 5 * psi(demand)
 
 
 def generatate_demand_core(demand, n_sample: int, rng):
@@ -39,6 +42,16 @@ def generate_demand_dataset(gen_u, n_sample: int, seed=42):
                   Y=outcome[:, np.newaxis])
 
 
-def cal_outcome(price, views, demand):
-  return np.clip(np.exp((views - price) / 10.0), None, 5.0) * price - 5 * psi(demand)
+def generate_multi_demand_dataset(n_sample, gen_e2u, gen_e, seed):
+  rng = default_rng(seed=seed)
+  e_samples = gen_e(n_sample, rng)
+  demand = gen_e2u(e_samples, rng)
+  _, _, price, views, outcome = generatate_demand_core(demand, n_sample, rng)
+  outcome = (outcome + rng.normal(0, 1.0, n_sample)).astype(float)
+
+  return mdfaDataSet(X=price[:, np.newaxis],
+                  E=e_samples[:, np.newaxis],
+                  W=views[:, np.newaxis],
+                  Y=outcome[:, np.newaxis])
+
 

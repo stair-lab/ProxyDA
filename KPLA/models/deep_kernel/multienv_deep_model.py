@@ -119,9 +119,9 @@ class DeepMultiEnvGraph:
                           x2_feature1[select_id,...],
                           cme_lam)
         beta_dict[e_val]= beta
-      
+
       #predicting for stage 2
-      predicted_w_feature2 = torch.zeros((e2_feature2.size(dim=0), 
+      predicted_w_feature2 = torch.zeros((e2_feature2.size(dim=0),
                                           w2_feature1.size(dim=1)))
       unique_e, unique_id = torch.unique(e2_feature2,
                                           sorted=True,
@@ -166,7 +166,7 @@ class DeepMultiEnvGraph:
     else:
       e2_feature2 = self.e2_feature_net(train_data2.E) #cme W_xe
       e2_feature3 = self.e2_feature_net(train_data3.E) #cme W_xe
-    
+
     w2_feature2 = self.w2_feature_net(train_data2.W) #cme W_xe
 
 
@@ -239,8 +239,8 @@ class DeepMultiEnvGraph:
     ptest_w1_feature = linear_reg_pred(test_x1_feature,
                                       self.target_coef_w_x)
     ptest_wx1_feature =  DeepMultiEnvGraph.augment_wx_feature(ptest_w1_feature,
-                                                              test_x1_feature,
-                                                              self.add_cme_intercept)
+                                                        test_x1_feature,
+                                                        self.add_cme_intercept)
     pred = linear_reg_pred(ptest_wx1_feature, self.coef_m0)
     return pred
 

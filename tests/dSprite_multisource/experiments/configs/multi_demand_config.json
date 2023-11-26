@@ -1,0 +1,18 @@
+{
+  "n_repeat": 1,
+  "data": {
+      "name" : "multi_demand",
+      "n_sample" : 5000
+  },
+  "model": {
+      "name": "mdfa",
+      "lam_set": {"cme": 0.1, "m0": 0.1},
+      "cme_iter": 30,
+      "m0_iter": 1,
+      "n_epoch": 100,
+      "w_weight_decay": 0.1,
+      "x_weight_decay": 0.1,
+      "e_weight_decay": 0.1,
+      "e2_discrete": true
+  }
+}
