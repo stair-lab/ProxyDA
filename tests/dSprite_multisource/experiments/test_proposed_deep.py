@@ -61,7 +61,7 @@ def gen_e2u(esamples, rng):
     else:
       sample_d = rng.beta(lookup[val][0],
                           lookup[val][1],
-                          select_id.size)
+                          select_id.size)*10 #rescale to [0,10]
     demand[select_id] = sample_d
   
   return demand
