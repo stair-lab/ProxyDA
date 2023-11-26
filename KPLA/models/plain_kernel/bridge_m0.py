@@ -8,7 +8,7 @@ Implementation of the kernel bridge function m0
 
 
 
-from .kernel_utils import hadamard_prod,ker_mat, mat_mul, stage2_weights, modif_kron, mat_trans, cal_l_yw
+from KPLA.models.plain_kernel.kernel_utils import hadamard_prod,ker_mat, mat_mul, stage2_weights, modif_kron, mat_trans, cal_l_yw
 import numpy as np
 import jax.numpy as jnp
 from jax import vmap

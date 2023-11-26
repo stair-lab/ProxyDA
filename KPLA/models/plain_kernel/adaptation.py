@@ -8,10 +8,10 @@ import jax.numpy as jnp
 from sklearn.preprocessing import normalize
 import matplotlib.pyplot as plt
 
-from .method import KernelMethod, split_data_widx
-from .cme import ConditionalMeanEmbed
-from .bridge_h0 import BridgeH0, BridgeH0CLF
-from .kernel_utils import flatten
+from KPLA.models.plain_kernel.method import KernelMethod, split_data_widx
+from KPLA.models.plain_kernel.cme import ConditionalMeanEmbed
+from KPLA.models.plain_kernel.bridge_h0 import BridgeH0, BridgeH0CLF
+from KPLA.models.plain_kernel.kernel_utils import flatten
 
 
 class FullAdapt(KernelMethod):

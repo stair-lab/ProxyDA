@@ -7,10 +7,10 @@
 import numpy as np
 import jax.numpy as jnp
 
-from .multienv_method import MultiKernelMethod
+from KPLA.models.plain_kernel.multienv_method import MultiKernelMethod
 
-from .cme import ConditionalMeanEmbed
-from .bridge_m0 import BridgeM0, BridgeM0CAT, BridgeM0CLF, BridgeM0CATCLF
+from KPLA.models.plain_kernel.cme import ConditionalMeanEmbed
+from KPLA.models.plain_kernel.bridge_m0 import BridgeM0, BridgeM0CAT, BridgeM0CLF, BridgeM0CATCLF
 
 
 

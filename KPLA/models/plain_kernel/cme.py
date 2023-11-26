@@ -5,7 +5,7 @@ Implementation of conditional mean embedding
 #Author: Katherine Tsai <kt14@illinois.edu>
 #License: MIT
 
-from .kernel_utils import ker_mat, hadamard_prod, cal_l_w, mat_mul
+from KPLA.models.plain_kernel.kernel_utils import ker_mat, hadamard_prod, cal_l_w, mat_mul
 import jax.numpy as jnp
 import jax.scipy.linalg as jsla
 

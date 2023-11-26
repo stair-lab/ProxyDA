@@ -12,8 +12,8 @@ from sklearn.preprocessing import normalize
 import numpy as np
 import jax.numpy as jnp
 from itertools import product
-from models.plain_kernel.adaptation import FullAdapt
-from models.plain_kernel.multienv_adaptation import MultiEnvAdapt
+from KPLA.models.plain_kernel.adaptation import FullAdapt
+from KPLA.models.plain_kernel.multienv_adaptation import MultiEnvAdapt
 
 
 def tune_adapt_model_cv(source_train:  dict,

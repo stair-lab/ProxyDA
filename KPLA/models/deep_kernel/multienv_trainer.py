@@ -11,9 +11,9 @@ from torch import nn
 import logging
 
 
-from .torch_reg_utils import linear_reg_loss
-from .multienv_deep_model import DeepMultiEnvGraph
-from .nn_structure import build_extractor
+from KPLA.models.deep_kernel.torch_reg_utils import linear_reg_loss
+from KPLA.models.deep_kernel.multienv_deep_model import DeepMultiEnvGraph
+from KPLA.models.deep_kernel.nn_structure import build_extractor
 from KPLA.data.data_class import  multi_split_train_data
 import matplotlib.pyplot as plt
 logger = logging.getLogger()

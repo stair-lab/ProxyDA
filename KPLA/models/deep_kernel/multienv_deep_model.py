@@ -14,8 +14,8 @@ from typing import Optional
 import torch
 from torch import nn
 import logging
-from  .torch_reg_utils import add_const_col, outer_prod, fit_linear, linear_reg_pred
-from data.data_class import dfaDataSetTorch
+from KPLA.models.deep_kernel.torch_reg_utils import add_const_col, outer_prod, fit_linear, linear_reg_pred
+from KPLA.data.data_class import dfaDataSetTorch
 
 logger = logging.getLogger()
 

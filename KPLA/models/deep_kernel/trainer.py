@@ -11,10 +11,10 @@ from torch import nn
 import logging
 
 
-from .torch_reg_utils import linear_reg_loss
-from .deep_model import DeepFullGraph
-from .nn_structure import build_extractor
-from data.data_class import  split_train_data
+from KPLA.models.deep_kernel.torch_reg_utils import linear_reg_loss
+from KPLA.models.deep_kernel.deep_model import DeepFullGraph
+from KPLA.models.deep_kernel.nn_structure import build_extractor
+from KPLA.data.data_class import  split_train_data
 
 import matplotlib.pyplot as plt
 logger = logging.getLogger()

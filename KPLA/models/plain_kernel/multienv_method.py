@@ -9,10 +9,10 @@ import pandas as pd
 
 import jax.numpy as jnp
 import numpy as np
-from .method import split_data_widx
-from .cme import ConditionalMeanEmbed
-from .method import KernelMethod
-from .kernel_utils import flatten
+from KPLA.models.plain_kernel.method import split_data_widx
+from KPLA.models.plain_kernel.cme import ConditionalMeanEmbed
+from KPLA.models.plain_kernel.method import KernelMethod
+from KPLA.models.plain_kernel.kernel_utils import flatten
 
 
 def concatenate_data(new_data, prev_data):

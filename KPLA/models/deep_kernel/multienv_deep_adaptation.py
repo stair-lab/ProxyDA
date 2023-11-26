@@ -7,10 +7,10 @@ Adaptation pipeline of the multi-source deep kernel implementation.
 
 
 import logging
-from .deep_adaptation import DeepKernelMethod
-from .multienv_deep_model import DeepMultiEnvGraph
-from .multienv_trainer import MultiEnvDeepKernelTrainer
-from .torch_reg_utils import linear_reg_pred
+from  KPLA.models.deep_kernel.deep_adaptation import DeepKernelMethod
+from  KPLA.models.deep_kernel.multienv_deep_model import DeepMultiEnvGraph
+from  KPLA.models.deep_kernel.multienv_trainer import MultiEnvDeepKernelTrainer
+from  KPLA.models.deep_kernel.torch_reg_utils import linear_reg_pred
 
 logger = logging.getLogger()
 

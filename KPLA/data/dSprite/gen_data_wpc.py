@@ -1,10 +1,8 @@
 import numpy as np
-import scipy
 from scipy.ndimage import rotate
 from tqdm.auto import tqdm
 
 from sklearn.model_selection import train_test_split
-from skimage.measure import block_reduce
 
 def crop_center(img, cropx, cropy):
   y, x, *_ = img.shape

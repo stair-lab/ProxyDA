@@ -2,7 +2,7 @@
 #Author: Katherine Tsai <kt14@illinois.edu>
 #License: MIT
 
-from .kernel_utils import hadamard_prod, ker_mat, mat_mul, modif_kron, stage2_weights, mat_trans, cal_l_yw
+from KPLA.models.plain_kernel.kernel_utils import hadamard_prod, ker_mat, mat_mul, modif_kron, stage2_weights, mat_trans, cal_l_yw
 import numpy as np
 import jax.numpy as jnp
 import jax.scipy.linalg as jsla

@@ -8,7 +8,7 @@ Date modified: Sep 19 2023
 import numpy as np
 from numpy.random import default_rng
 
-from .data_class import dfaDataSet, mdfaDataSet
+from KPLA.data.data_class import dfaDataSet, mdfaDataSet
 
 
 def psi(t: np.ndarray) -> np.ndarray:

@@ -9,9 +9,9 @@ Adaptation pipeline of the deep kernel implementation.
 import torch
 import logging
 import json
-from .deep_model import DeepFullGraph
-from .trainer import FullDeepKernelTrainer
-from .torch_reg_utils import linear_reg_pred
+from KPLA.models.deep_kernel.deep_model import DeepFullGraph
+from KPLA.models.deep_kernel.trainer import FullDeepKernelTrainer
+from KPLA.models.deep_kernel.torch_reg_utils import linear_reg_pred
 
 logger = logging.getLogger()
 
