@@ -46,7 +46,8 @@ p_u = [p_u_0, 1-p_u_0]
 
 
 metrics = []
-
+#file path for model selection
+ms_file_path = "../model_selection/"
 
 for seed in range(1922,1932):
 
@@ -119,7 +120,7 @@ for seed in range(1922,1932):
   metrics.append(m)
 
 
-  df = pd.read_csv("MultisourceSA.csv")
+  df = pd.read_csv(ms_file_path+"MultisourceSA.csv")
   bandwidth = df["bandwidth"].values[0]
 
   msa = MultiSouceSimpleAdapt(n_env=len(source_train_list_mmd),
@@ -147,7 +148,7 @@ for seed in range(1922,1932):
         "aucroc": err3}
   metrics.append(m)
 
-  df = pd.read_csv("MultisourceWCSC.csv")
+  df = pd.read_csv(ms_file_path+"MultisourceWCSC.csv")
 
   bandwidth = df["bandwidth"].values[0]
 
@@ -176,7 +177,7 @@ for seed in range(1922,1932):
         "aucroc": err3}
   metrics.append(m)
 
-  df = pd.read_csv("MultisourceMK.csv")
+  df = pd.read_csv(ms_file_path+"MultisourceMK.csv")
 
 
 

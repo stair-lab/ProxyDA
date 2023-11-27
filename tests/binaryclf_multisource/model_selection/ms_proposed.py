@@ -74,15 +74,15 @@ target_test_list.append(target_test)
 
 
 
-lam_set = {'cme': 1e-3, 'k0': 1e-3, 'lam_min':-4, 'lam_max':-1}
-method_set = {'cme': 'original', 'k0': 'original', 'm0': 'original'}
+lam_set = {'cme': 1e-3, 'm0': 1e-3, 'lam_min':-4, 'lam_max':-1}
+method_set = {'cme': 'original', 'm0': 'original', 'm0': 'original'}
 
 #specity the kernel functions for each estimator
 kernel_dict = {}
 
 kernel_dict['cme_w_xz'] = {'X': 'rbf', 'Y':'rbf_column'} #Y is W
 kernel_dict['cme_w_x']  = {'X': 'rbf', 'Y': 'rbf_column'} # Y is W
-kernel_dict['k0']       = {'X': 'rbf'}
+kernel_dict['m0']       = {'X': 'rbf'}
 
 
 

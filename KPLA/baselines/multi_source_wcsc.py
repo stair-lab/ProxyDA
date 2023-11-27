@@ -71,8 +71,8 @@ class MultiSourceMMD:
     # construct the density esimator of P_Xi_y
     kde_x_y = []
     for k in range(self.n_label):
-      kde_x_y = self._get_kde_x_y(k) #y= self.labels[k]
-      kde_x_y.append(kde_x_y)
+      tmp_kde_x_y = self._get_kde_x_y(k) #y= self.labels[k]
+      kde_x_y.append(tmp_kde_x_y)
     print('construct KDE')
     self.kde_x_y = kde_x_y
 

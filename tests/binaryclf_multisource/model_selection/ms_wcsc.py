@@ -129,8 +129,8 @@ prams_batch = product([RBF(length_scale=d) for d in length_scale],
                           length_scale)
 
 
-
-
+print("test single loop")
+run_single_loop([RBF(0.1), 0.1])
 
 pool = Pool(120)
 print(f"start multiprocessing, number of cpu: {cpu_count()-1}")

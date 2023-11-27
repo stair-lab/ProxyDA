@@ -206,7 +206,7 @@ class MultiKernelMethod(KernelMethod):
     else:
       cme_w_x = self.target_estimator['cme_w_x'][0]
 
-    predicty = m0.get_EYx(testX, cme_w_x)
+    predicty = m0.get_exp_y_x(testX, cme_w_x)
     return predicty
 
   def split_data(self):

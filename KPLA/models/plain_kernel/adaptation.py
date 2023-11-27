@@ -407,5 +407,5 @@ class FullAdapt(KernelMethod):
       else:
         cme_wc_x = self.target_estimator['cme_wc_x']
 
-      predict_y = h0.get_EYx(test_x, cme_wc_x)
+      predict_y = h0.get_exp_y_x(test_x, cme_wc_x)
       return predict_y
