@@ -75,8 +75,8 @@ class ConditionalMeanEmbed:
     # construct of gram matrix
     ker_xx = jnp.ones((self.n_samples, self.n_samples))
     for key in self.x_list:
-      x = x[key]
-      temp = ker_mat(jnp.array(x), jnp.array(x),
+      x_idx = x[key]
+      temp = ker_mat(jnp.array(x_idx), jnp.array(x_idx),
                      kernel=self.kernel_dict[key],
                      scale=self.sc)
 

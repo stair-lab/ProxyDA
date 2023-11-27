@@ -21,7 +21,7 @@ from sklearn.model_selection import KFold
 from itertools import product
 from KPLA.data.dSprite.gen_data_wpc import latent_to_index, generate_samples
 from KPLA.models.plain_kernel.adaptation import FullAdapt
-
+from KPLA.models.plain_kernel.model_selection import tune_adapt_model_cv
 import random
 
 # from components.approaches import compute_label_shift_correction_weights
@@ -37,7 +37,7 @@ parser.add_argument('--dist_2', type=str, default='uniform', choices=['beta', 'u
 
 parser.add_argument('--N', type=int, default=10000)
 parser.add_argument('--seed', type=int, default=0)
-parser.add_argument('--output_dir', type=str, default='/home/oes2/mimic_experiments/experiments_results')
+parser.add_argument('--output_dir', type=str, default='./')
 
 args = parser.parse_args()
 
@@ -196,6 +196,16 @@ scale_log_min, scale_log_max = -4, 2
 
 MODEL = KernelRidge
 
+
+method_set = {'cme': 'original', 'h0': 'original', 'm0': 'original'}
+X_kernel = 'rbf'
+kernel_dict = {}
+kernel_dict['cme_w_xc'] = {'X': X_kernel, 'C': 'rbf', 'Y':'rbf'} #Y is W
+kernel_dict['cme_wc_x'] = {'X': X_kernel, 'Y': 'rbf'} # Y is (W,C)
+
+kernel_dict['h0']       = {'C': 'rbf'}
+kernel_dict['m0']       = {'C': 'rbf', 'X': X_kernel}
+
 def tune_kernel(source_train,
                 target_train,
                 source_test,
@@ -268,12 +278,26 @@ def tune_kernel(source_train,
 
   return best_estimator, best_alpha, best_scale, kernel_dict
 
-estimator_full, alpha, scale, kernel_dict = tune_kernel(source_train, target_train,
-                                           source_test, target_test,
-                                           n_fold=N_FOLD, n_params=N_PARAMS)
+#estimator_full, alpha, scale, kernel_dict = tune_kernel(source_train, target_train,
+#                                           source_test, target_test,
+#                                           n_fold=N_FOLD, n_params=N_PARAMS)
 
+estimator_full, best_params = tune_adapt_model_cv(source_train,
+                                                  target_train,
+                                                  source_test,
+                                                  target_test,
+                                                  method_set,
+                                                  kernel_dict,
+                                                  FullAdapt,
+                                                  task='r',
+                                                  n_params=N_PARAMS,
+                                                  n_fold=N_FOLD,
+                                                  min_log=-4,
+                                                  max_log=0)
 RESULTS['kernel_dict'] = kernel_dict
-RESULTS['hparams']['kernel'] = {'alpha': alpha, 'scale': scale}
+RESULTS['hparams']['kernel'] = {'alpha': best_params['alpha'],
+                                'alpha2': best_params['alpha2'],
+                                'scale': best_params['scale']}
 
 print('')
 print('*'*20+"LSA"+'*'*20)

@@ -20,6 +20,7 @@ from KPLA.data.data_generator import gen_multienv_class_discrete_z
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import log_loss
+from sklearn.gaussian_process.kernels import RBF
 
 
 # Define Sklearn evaluation functions

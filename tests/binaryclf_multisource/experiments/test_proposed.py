@@ -41,7 +41,8 @@ kernel_dict['cme_w_xz'] = {'X': 'rbf', 'Y':'rbf_column'} #Y is W
 kernel_dict['cme_w_x']  = {'X': 'rbf', 'Y': 'rbf_column'} # Y is W
 kernel_dict['m0']       = {'X': 'rbf'}
 
-df = pd.read_csv('classification_model_select.csv')
+file_path = '../model_selection/'
+df = pd.read_csv(file_path+'classification_model_select.csv')
 
 best_lam_set = {'cme': df['alpha'].values[0],
                 'm0':  df['alpha2'].values[0],

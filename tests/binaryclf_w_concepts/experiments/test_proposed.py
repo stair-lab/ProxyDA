@@ -16,9 +16,7 @@ from KPLA.baselines.lsa_kernel import extract_from_df_nested
 
 #define parameters
 #load data
-source_path = "/home/kt14/workbench/mimic_experiments/\
-              kernel_adaptation/latent_shift_adaptation/\
-              latent_shift_adaptation/colab/tmp_data"
+source_path = "./tmp_data"
 w_idx = 1
 seed = 192
 
@@ -90,7 +88,6 @@ best_estimator, best_params = tune_adapt_model(source_train,
                                                 kernel_dict,
                                                 task="c",
                                                 n_params=5,
-                                                n_fold=5,
                                                 min_log=-3,
                                                 max_log=1,
                                                 )

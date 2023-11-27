@@ -21,7 +21,7 @@ def log_loss64(y_true, y_pred, **kwargs):
   return log_loss(y_true, y_pred.astype(np.float64), **kwargs)
 
 evals_sklearn = {
-    "ll": log_loss64,
+  #  "ll": log_loss64,
     "hard_acc": accuracy_score,
     "auc": roc_auc_score
 }
@@ -140,14 +140,16 @@ class KernelMethod(BaseEstimator):
       #print(np.array(self.source_train["Y"]))
       self.classes_ = jnp.arange(self.source_train["Y"].shape[1])
 
-
-
-  def predict(self):
+  def _fit_one_domain(self, domain_data, task):
     """Fits the model to the training data."""
     raise NotImplementedError("Implemented in child class.")
 
+  def predict(self):
+    """Prediction."""
+    raise NotImplementedError("Implemented in child class.")
+
   def evaluation(self):
-    """Fits the model to the training data."""
+    """Evaluate the model."""
     raise NotImplementedError("Implemented in child class.")
 
 
