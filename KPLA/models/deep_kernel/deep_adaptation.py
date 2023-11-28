@@ -39,19 +39,22 @@ class DeepKernelMethod:
           source_traindata,
           target_traindata=None,
           split=False,
-          verbose=2):
+          verbose=2,
+          plot=True):
     """fit the graph with deep kernel features.
     Args:
         source_traindata: dfaDataSetTorch
         target_traindata: dfaDataSetTorch or None
         split: split training data or not, Boolean
         verbose: int
+        plot: plot loss or not, Boolean
     """
 
     model = self.trianer.train(source_traindata,
                                target_traindata,
                                split,
-                               verbose)
+                               verbose,
+                               plot)
     self.model = model
 
     self.w_dim = self.model.w_dim

@@ -305,6 +305,7 @@ class FullDeepKernelTrainer:
       self.track_loss["wc_x.x"].append(loss.item())
 
       if self.x1_target_feature_net and target_traindata is not None:
+
         l2 = linear_reg_loss(w2c3_target_feature,
                              x1_target_feature,
                              self.lam_set["cme"])

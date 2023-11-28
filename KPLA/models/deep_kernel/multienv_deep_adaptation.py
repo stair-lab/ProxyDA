@@ -40,7 +40,10 @@ class DeepMultiEnvAdapt(DeepKernelMethod):
     test_x1_feature = tmp
     ptest_w1_feature = linear_reg_pred(test_x1_feature,
                                         self.model.target_coef_w_x)
-
-    pred = linear_reg_pred(ptest_w1_feature, self.model.coef_m0)
+    test_x3_feature = self.model.x3_feature_net(testX)
+    feature = DeepMultiEnvGraph.augment_wx_feature(ptest_w1_feature,
+                                                  test_x3_feature,
+                                                  self.model.add_m0_intercept)
+    pred = linear_reg_pred(feature, self.model.coef_m0)
 
     return pred

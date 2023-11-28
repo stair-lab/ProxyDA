@@ -7,12 +7,15 @@
   "model": {
       "name": "mdfa",
       "lam_set": {"cme": 0.1, "m0": 0.1},
-      "cme_iter": 30,
+      "cme_iter": 20,
       "m0_iter": 1,
-      "n_epoch": 100,
+      "n_epoch": 200,
       "w_weight_decay": 0.1,
       "x_weight_decay": 0.1,
       "e_weight_decay": 0.1,
-      "e2_discrete": true
+      "e2_discrete": false,
+      "w_lr": 1e-3,
+      "x_lr": 1e-3,
+      "e_lr": 1e-3
   }
 }

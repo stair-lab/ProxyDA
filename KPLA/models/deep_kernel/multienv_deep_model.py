@@ -170,7 +170,7 @@ class DeepMultiEnvGraph:
     w2_feature2 = self.w2_feature_net(train_data2.W) #cme W_xe
 
 
-    x3_feature3 = self.x3_feature_net(train_data3.X) #h0
+    x3_feature3 = self.x3_feature_net(train_data3.X) #m0
 
     if target_data is not None and self.x1_target_feature_net:
 

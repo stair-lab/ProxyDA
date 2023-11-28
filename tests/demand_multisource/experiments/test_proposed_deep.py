@@ -49,10 +49,10 @@ def gen_e2u(esamples, rng):
             3: [5,   7.5],
             4: [7.5,  10],
             5: [2,     2]}
-
+  
   u, indices = np.unique(esamples, return_inverse=True)
   demand = np.zeros(esamples.size)
-  for val, i in enumerate(u):
+  for i, val in enumerate(u):
     select_id = np.where(indices==i)[0]
     if val != 5:
       sample_d = rng.uniform(lookup[val][0],
@@ -87,6 +87,7 @@ target_testdata = generate_multi_demand_dataset(1000,
                                                 seed=42)
 target_testdata = mdfaDataSetTorch.from_numpy(target_testdata)
 
+print(source_traindata.X.shape)
 
 
 
@@ -97,12 +98,12 @@ logging.info("Started")
 
 #train source model and adapted model
 dfa_model = DeepMultiEnvAdapt(config_files, gpu_flg)
-dfa_model.fit(source_traindata, target_traindata, split, verbose)
+dfa_model.fit(source_traindata, target_traindata, split, verbose, plot=True)
 
 #train target model
 
 target_model = DeepMultiEnvAdapt(config_files, gpu_flg)
-target_model.fit(target_traindata, target_traindata, split, verbose)
+target_model.fit(target_traindata, target_traindata, split, verbose, plot=False)
 
 
 logging.info("FINISHED")

@@ -19,7 +19,7 @@ from sklearn import random_projection
 from sklearn.model_selection import GridSearchCV, KFold
 
 from KPLA.data.dSprite.gen_data_wpc import latent_to_index, generate_samples
-
+from KPLA.baselines.model_select import select_kernel_ridge_model
 N_CPUS = os.cpu_count()
 
 # from components.approaches import compute_label_shift_correction_weights
@@ -197,6 +197,7 @@ alpha_log_min, alpha_log_max = -4, 2
 scale_log_min, scale_log_max = -4, 2
 
 MODEL = KernelRidge
+kr_model = MODEL(kernel=kernel)
 
 # # Regression Baselines
 metrics = []
@@ -208,6 +209,7 @@ def get_best(X,
              n_fold=N_FOLD,
              sample_weight=None):
   kr = MODEL(kernel=kernel)
+
 
   param_grid = {
       'gamma': np.logspace(-4, 2, n_params)/DIM,  # Adjust the range as needed
@@ -232,7 +234,10 @@ def get_best(X,
 print('*'*20+"ERM"+'*'*20)
 erm_metrics = {'approach': 'ERM'}
 
-source_erm, source_erm_hparams = get_best(source_train['X'], source_train['Y'])
+kr_model = MODEL(kernel=kernel)
+source_erm, source_erm_hparams = select_kernel_ridge_model(kr_model, 
+                                                           source_train['X'],
+                                                           source_train['Y'])
 RESULTS['hparams']['source_erm'] = source_erm_hparams
 # source_erm.fit(source_train['X'], source_train['Y'])
 
@@ -241,7 +246,10 @@ erm_metrics['source -> target'] = mean_squared_error(target_test['Y'], source_er
 
 RESULTS['source_erm'] = source_erm
 
-target_erm, target_erm_hparams = get_best(target_train['X'], target_train['Y'])
+kr_model = MODEL(kernel=kernel)
+target_erm, target_erm_hparams = select_kernel_ridge_model(kr_model, 
+                                                           target_train['X'],
+                                                           target_train['Y'])
 RESULTS['hparams']['target_erm'] = target_erm_hparams
 # target_erm.fit(target_train['X'], target_train['Y'])
 
@@ -283,7 +291,13 @@ q_x_train = d_x.predict_proba(source_train['X'])[:, 1]
 source_sample_weight_train = q_x_train / (1. - q_x_train + 1e-3)
 
 # source_covar_model = MODEL(kernel=kernel, alpha=alpha, gamma=source_gamma)
-source_covar_model, source_covar_hparams = get_best(source_train['X'], source_train['Y'], sample_weight=source_sample_weight_train)
+kr_model = MODEL(kernel=kernel)
+source_covar_model, source_covar_hparams = select_kernel_ridge_model(kr_model,
+                                                                     source_train['X'],
+                                                                     source_train['Y'],
+                                                                     source_sample_weight_train)
+
+
 RESULTS['hparams']['source_covar'] = source_covar_hparams
 # source_covar_model.fit(source_train['X'], source_train['Y'], sample_weight=source_sample_weight_train)
 
@@ -298,7 +312,16 @@ target_sample_weight_train = q_x_train / (1. - q_x_train + 1e-3)
 
 # target_covar_model = MODEL(kernel=kernel, alpha=alpha, gamma=target_gamma)
 # target_covar_model.fit(target_train['X'], target_train['Y'], sample_weight=target_sample_weight_train)
-target_covar_model, target_covar_hparams = get_best(target_train['X'], target_train['Y'], sample_weight=target_sample_weight_train)
+kr_model = MODEL(kernel=kernel)
+target_covar_model, target_covar_hparams = select_kernel_ridge_model(kr_model,
+                                                                     target_train['X'],
+                                                                     target_train['Y'],
+                                                                     target_sample_weight_train)
+
+
+
+
+
 RESULTS['hparams']['target_covar'] = target_covar_hparams
 
 covar_metrics['target -> target'] = mean_squared_error(target_test['Y'], target_covar_model.predict(target_test['X']))
@@ -329,7 +352,11 @@ source_sample_weight_train = np.exp(log_q_y - log_p_y)
 
 # source_label_model = MODEL(kernel=kernel, alpha=alpha, gamma=source_gamma)
 # source_label_model.fit(source_train['X'], source_train['Y'], sample_weight=source_sample_weight_train)
-source_label_model, source_label_hparams = get_best(source_train['X'], source_train['Y'], sample_weight=source_sample_weight_train)
+kr_model = MODEL(kernel=kernel)
+source_label_model, source_label_hparams = select_kernel_ridge_model(kr_model,
+                                                                     source_train['X'],
+                                                                     source_train['Y'],
+                                                                     sample_weight=source_sample_weight_train)
 RESULTS['hparams']['source_label'] = source_label_hparams
 
 label_metrics['source -> source'] = mean_squared_error(source_test['Y'], source_label_model.predict(source_test['X']))
@@ -342,7 +369,11 @@ target_sample_weight_train = np.exp(log_p_y - log_q_y)
 
 # target_label_model = MODEL(kernel=kernel, alpha=alpha, gamma=target_gamma)
 # target_label_model.fit(target_train['X'], target_train['Y'], sample_weight=target_sample_weight_train)
-target_label_model, target_label_hparams = get_best(target_train['X'], target_train['Y'], sample_weight=target_sample_weight_train)
+kr_model = MODEL(kernel=kernel)
+target_label_model, target_label_hparams = select_kernel_ridge_model(kr_model,
+                                                                     target_train['X'],
+                                                                     target_train['Y'],
+                                                                     sample_weight=target_sample_weight_train)
 RESULTS['hparams']['target_label'] = target_label_hparams
 
 label_metrics['target -> target'] = mean_squared_error(target_test['Y'], target_label_model.predict(target_test['X']))

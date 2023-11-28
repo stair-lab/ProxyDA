@@ -229,23 +229,28 @@ class MultiEnvDeepKernelTrainer:
 
       if target_traindata is not None:
         w2_target_feature = self.w2_feature_net(target_traindata.W)
-        x1_target_feature = self.x1_target_feature_net(target_traindata.X)
 
     for _ in range(self.cme_iter):
       if self.x1_target_feature_net and target_traindata is not None:
+        self.x1_target_opt.zero_grad()
+
+        x1_target_feature = self.x1_target_feature_net(target_traindata.X)
+        tmp2 = DeepMultiEnvGraph.augment_single_feature(x1_target_feature,
+                                                   self.add_cme_intercept)
+        x1_target_feature = tmp2
         loss = linear_reg_loss(w2_target_feature,
                              x1_target_feature,
                              self.lam_set["cme"])
+
+        loss.backward()
         self.track_loss["w_x.x_target"].append(loss.item())
 
-      loss.backward()
 
+        if verbose >= 2:
+          logger.info(f"cme_w_x x learning: {loss.item()}")
 
-      if verbose >= 2:
-        logger.info(f"cme_w_x x learning: {loss.item()}")
-
-      if self.x1_target_feature_net:
-        self.x1_target_opt.step()
+        if self.x1_target_feature_net:
+          self.x1_target_opt.step()
 
   def cme_w_xe_feature_update(self, train_data, verbose):
     """
@@ -261,7 +266,7 @@ class MultiEnvDeepKernelTrainer:
 
     self.w2_feature_net.train(False)
     if not self.e2_discrete:
-      self.c2_feature_net.train(True)
+      self.e2_feature_net.train(True)
 
 
     with torch.no_grad():
@@ -339,14 +344,14 @@ class MultiEnvDeepKernelTrainer:
       x2_feature2 = self.x2_feature_net(train_data2.X)
 
 
-    for _ in range(self.h0_iter):
+    for _ in range(self.m0_iter):
       self.x3_opt.zero_grad()
       self.w2_opt.zero_grad()
 
       w2_feature1 = self.w2_feature_net(train_data1.W)
       x3_feature2 = self.x3_feature_net(train_data2.X)
 
-      res = DeepMultiEnvGraph.fit_h0(x2_feature1,
+      res = DeepMultiEnvGraph.fit_m0(x2_feature1,
                                      x2_feature2,
                                      x3_feature2,
                                      e2_feature1,
@@ -360,7 +365,7 @@ class MultiEnvDeepKernelTrainer:
                                      self.e2_discrete)
       loss = res["loss"]
       loss.backward()# update Model2 parameters
-      self.coef_h0 = res["alpha"]
+      self.coef_m0 = res["alpha"]
       self.track_loss["m0"].append(loss.item())
       if verbose >= 2:
         logger.info(f"m0 learning: {loss.item()}")

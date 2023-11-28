@@ -13,17 +13,17 @@ from torch import nn
 def build_net_for_multi_demand() -> Tuple[
   nn.Module, nn.Module, nn.Module, nn.Module, nn.Module, nn.Module, nn.Module]:
 
-  x1_target_net = nn.Sequential(nn.Linear(2, 32),
+  x1_target_net = nn.Sequential(nn.Linear(1, 32),
                                 nn.ReLU(),
                                 nn.Linear(32, 16),
                                 nn.ReLU(), nn.Linear(16, 8))
 
-  x2_net = nn.Sequential(nn.Linear(2, 32),
+  x2_net = nn.Sequential(nn.Linear(1, 32),
                         nn.ReLU(),
                         nn.Linear(32, 16),
                         nn.ReLU(), nn.Linear(16, 8))
 
-  x3_net = nn.Sequential(nn.Linear(2, 32),
+  x3_net = nn.Sequential(nn.Linear(1, 32),
                         nn.ReLU(),
                         nn.Linear(32, 16),
                         nn.ReLU(), nn.Linear(16, 8))
