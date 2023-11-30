@@ -51,6 +51,10 @@ class MIMIC(tf.keras.utils.Sequence):
         (metadata.dicom_id.isin(self.dicom_ids))
       ]
 
+    for w in W:
+      self.metadata.loc[:, 'orig_'+w] = self.metadata.loc[:, w].values
+      self.metadata.loc[:, w] = pd.factorize(self.metadata.loc[:, w].values)[0]
+
     if self.metadata.shape[0] != len(dicom_ids) and verbose > 0:
       print("Not all dicom_ids were present. Size: {} -> {}".format(
             len(self.dicom_ids), self.metadata.shape[0]))
@@ -114,8 +118,9 @@ class MIMIC(tf.keras.utils.Sequence):
     study_ids = list(metadata.study_id)
 
     Y = metadata[self.Y].values
-    W = metadata[self.W].values
+    # W = metadata[self.W].values
     U = metadata[self.U].values
+    W = np.random.normal(U)
 
     Xs = self.serial_read(self.load_cxr, dicom_ids)
     Cs = self.serial_read(self.load_report, study_ids)
@@ -142,13 +147,14 @@ class MIMIC(tf.keras.utils.Sequence):
     study_ids = list(metadata.study_id)
 
     Y = metadata[self.Y].values
-    W = metadata[self.W].values
+    # W = metadata[self.W].values
     U = metadata[self.U].values
+    W = np.random.normal(U)
 
     reader = self.parallel_read if parallel else self.serial_read
 
-    Xs = self.reader(self.load_cxr, dicom_ids, verbose=True, name='cxr')
-    Cs = self.reader(self.load_report, study_ids, verbose=True, name='report')
+    Xs = reader(self.load_cxr, dicom_ids, verbose=True, name='cxr')
+    Cs = reader(self.load_report, study_ids, verbose=True, name='report')
 
     X = np.concatenate(Xs, 0)
     C = np.concatenate(Cs, 0)

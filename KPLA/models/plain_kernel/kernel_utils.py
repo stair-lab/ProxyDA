@@ -66,9 +66,9 @@ def fill_diagonal(a, val):
 def rbf_ker(x,y,scale=1):
   dist_mat=dist_func(l2_dist, x, y)
 
-  #gamma=modist(jnp.sqrt(dist_mat))
-  #coef=1/(2*gamma**2)
-  coef = 1/x.shape[1] if len(x.shape) > 1 else 1
+  gamma=modist(jnp.sqrt(dist_mat))
+  coef=1/(2*gamma**2)
+  # coef = 1/x.shape[1] if len(x.shape) > 1 else 1
   coef *= scale
   coef *= 0.5
   ker = jnp.exp(-coef*dist_mat)

@@ -38,7 +38,7 @@ def tune_adapt_model_cv(source_train:  dict,
 
   best_params = {}
 
-  for alpha, alpha2, scale in params:
+  for param, (alpha, alpha2, scale) in enumerate(params):
     kf = KFold(n_splits=n_fold, random_state=None, shuffle=False)
     lam_set = {"cme": alpha,
                "m0": alpha2,
@@ -50,7 +50,7 @@ def tune_adapt_model_cv(source_train:  dict,
     best_model_i = None
 
     for i, (train_idx, test_idx) in enumerate(kf.split(source_train["X"])):
-      print(f"({alpha}, {alpha2}, {scale}), Fold {i}:")
+      print(f"({alpha}, {alpha2}, {scale}), Param {param} Fold {i}:")
 
       source_train_cv_train = {k: v[train_idx] for k, v in source_train.items()}
       source_train_cv_val   = {k: v[test_idx]  for k, v in source_train.items()}
@@ -72,15 +72,20 @@ def tune_adapt_model_cv(source_train:  dict,
       predict_y = estimator.predict({"X": source_train_cv_val["X"]},
                                       "source", 
                                       "source")
-      if task == "r":
-        acc_err = mean_squared_error(np.array(source_train_cv_val["Y"]),
-                                     np.array(predict_y))
+      
+      try:
+        if task == "r":
+          acc_err = mean_squared_error(np.array(source_train_cv_val["Y"]),
+                                      np.array(predict_y))
 
-      elif task == "c":
-        testy_label = np.array(jnp.argmax(source_train_cv_val["Y"], axis=1))
-        predicty_prob = normalize(np.array(predict_y), axis=1)
+        elif task == "c":
+          testy_label = np.array(jnp.argmax(source_train_cv_val["Y"], axis=1))
+          predicty_prob = normalize(np.array(predict_y), axis=1)
 
-        acc_err = roc_auc_score(testy_label, predicty_prob[:,1])
+          acc_err = roc_auc_score(testy_label, predicty_prob[:,1])
+      except ValueError as caught_err:
+        print(f"Caught {caught_err} on param {param} fold {i}")
+        continue
 
       errs.append(acc_err/len(source_train_cv_val))
       ## select parameters from target
@@ -90,6 +95,8 @@ def tune_adapt_model_cv(source_train:  dict,
         best_err_i = acc_err
         best_model_i = estimator
 
+    if len(errs) == 0:
+      continue
     improve_r = (np.mean(errs) < best_err) and task == "r"
     improve_c = (np.mean(errs) > best_err) and task == "c"
 
@@ -277,6 +284,7 @@ def tune_multienv_adapt_model_cv(source_train_list:  dict,
 
   best_params = {}
 
+  print(f"{len(params)} parameter combinations w/ {n_fold} folds.")
   for alpha, alpha2, scale in params:
     kf = KFold(n_splits=n_fold, random_state=None, shuffle=False)
     lam_set = {"cme": alpha,
