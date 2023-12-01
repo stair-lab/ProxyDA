@@ -12,7 +12,7 @@ import numpy as np
 from sklearn.neighbors import KernelDensity
 
 from sklearn.preprocessing import normalize
-from sklearn.neural_network import MLPClassifier
+from sklearn.neural_network import MLPClassifier, MLPRegressor
 
 
 class MuiltiSourceCCM:
@@ -23,7 +23,7 @@ class MuiltiSourceCCM:
   Domain adaptation with multiple sources. 
   Advances in neural information processing systems, 21.
   """
-  def __init__(self, n_env, kde_kernel='gaussian', bandwidth=1.0, max_iter=300):
+  def __init__(self, n_env, kde_kernel='gaussian', bandwidth=1.0, max_iter=300, task='c'):
     self.n_env = n_env
     self.kde_kernel = kde_kernel
     self.bandwidth = bandwidth
@@ -31,7 +31,10 @@ class MuiltiSourceCCM:
     self.classifiers = []
     for _ in range(n_env):
       self.kde_x.append(KernelDensity(kernel=kde_kernel, bandwidth=bandwidth))
-      self.classifiers.append(MLPClassifier(random_state=1, max_iter=max_iter))
+      if task == 'c':
+        self.classifiers.append(MLPClassifier(random_state=1, max_iter=max_iter))
+      else:
+        self.classifiers.append(MLPRegressor(random_state=1, max_iter=max_iter))
 
 
   def fit(self, source_data, x_target=None, weight=None):
@@ -131,3 +134,36 @@ class MultiSourceUniform:
       predict_probay[:, i, :] = clf.predict_proba(new_x)
 
     return np.sum(predict_probay, axis=1)/self.n_env
+
+
+
+
+class MultiSourceUniformReg:
+  """
+  ensemble prediction by uniformly weight the prediciton results
+  """
+  def __init__(self, n_env, max_iter=300):
+    self.n_env = n_env
+    self.regressors = [MLPRegressor(random_state=1, max_iter=max_iter) for _ in range(n_env)]
+
+  def fit(self, source_data):
+
+    long_y = []
+    for i, train_data in enumerate(source_data):
+
+      x_train = train_data['X']
+      y_train = train_data['Y']
+      long_y += list(np.unique(y_train))
+
+      self.regressors[i].fit(x_train, y_train)
+    self.n_labels_ =  list(set(long_y))
+
+    return self
+
+  def predict(self, new_x):
+    predicty = np.zeros((new_x.shape[0], self.n_env))
+    for i, reg in enumerate(self.regressors):
+      predicty[:, i] = reg.predict(new_x)
+
+    return np.sum(predicty, axis=1)/self.n_env
+
