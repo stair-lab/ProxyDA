@@ -1,3 +1,0 @@
-Request_gpus = 1
-requirements = (CUDADeviceName != "Tesla K40m"  && CUDADeviceName != "NVIDIA GeoForce GTX TITAN X" && Machine == "vision-23.cs.illinois.edu")
-Queue
