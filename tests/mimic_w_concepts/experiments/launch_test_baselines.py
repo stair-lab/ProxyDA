@@ -1,7 +1,7 @@
 import os
 import htcondor
 
-jobs_dir = "/home/oes2/proxy_latent_shifts/tests/mimic_w_concepts/experiments/baseline_jobs"
+jobs_dir = "/home/kt14/workbrench/backup/proxy_latent_shifts/tests/mimic_w_concepts/experiments/baseline_jobs"
 os.makedirs(jobs_dir, exist_ok=True)
 
 SCHEDD = htcondor.Schedd()

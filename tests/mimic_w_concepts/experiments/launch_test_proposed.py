@@ -2,22 +2,22 @@ import os
 import glob
 import htcondor
 
-jobs_dir = "/home/oes2/proxy_latent_shifts/tests/mimic_w_concepts/experiments/jobs_proposed"
+jobs_dir = "/home/kt14/workbench/backup/proxy_latent_shifts/tests/mimic_w_concepts/experiments/jobs_proposed"
 os.makedirs(jobs_dir, exist_ok=True)
 
 SCHEDD = htcondor.Schedd()
 
-EXEC = '/home/oes2/miniconda3/envs/lsa/bin/python'
-SCRIPT = "/home/oes2/proxy_latent_shifts/tests/mimic_w_concepts/experiments/test_proposed.py"
+EXEC = '/home/kt14/miniconda3/envs/work2/bin/python'
+SCRIPT = "/home/kt14/workbench/backup/proxy_latent_shifts/tests/mimic_w_concepts/experiments/test_proposed.py"
 
 req = ''
 req += '(Machine == "vision-21.cs.illinois.edu") || '
 req += '(Machine == "vision-22.cs.illinois.edu") || '
 req += '(Machine == "vision-23.cs.illinois.edu") '
 
-for seed in range(192, 202):
+for seed in range(192,198):# 202):
     run_name = f"test_proposed_MIMIC_{seed}"
-    out_dir = f"/home/oes2/proxy_latent_shifts/tests/mimic_w_concepts/experiments/proposed_results/{run_name}"
+    out_dir = f"/home/kt14/workbench/backup/proxy_latent_shifts/tests/mimic_w_concepts/experiments/proposed_results/{run_name}"
     if len(glob.glob(os.path.join(out_dir, '*.csv'))) > 0:
         print(f"Skipping {run_name}.")
         continue

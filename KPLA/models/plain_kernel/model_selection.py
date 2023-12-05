@@ -23,7 +23,8 @@ def tune_adapt_model_cv(source_train:  dict,
                         method_set: dict,
                         kernel_dict: dict,
                         model, #function class object
-                        task="r",
+                        task="c",
+                        fit_task = "r",
                         n_params=5,
                         n_fold=5,
                         min_log=-4,
@@ -67,25 +68,33 @@ def tune_adapt_model_cv(source_train:  dict,
                         method_set,
                         kernel_dict)
 
-      estimator.fit(task)
+      estimator.fit(fit_task)
       ##select parameters from source
       predict_y = estimator.predict({"X": source_train_cv_val["X"]},
                                       "source", 
                                       "source")
       
-      try:
-        if task == "r":
-          acc_err = mean_squared_error(np.array(source_train_cv_val["Y"]),
-                                      np.array(predict_y))
+      #try:
+      if task == "r":
+        acc_err = mean_squared_error(np.array(source_train_cv_val["Y"]),
+                                    np.array(predict_y))
 
-        elif task == "c":
+      elif task == "c":
+        if len(source_train_cv_val["Y"].shape)>=2:
           testy_label = np.array(jnp.argmax(source_train_cv_val["Y"], axis=1))
           predicty_prob = normalize(np.array(predict_y), axis=1)
+        else:
+          testy_label=source_train_cv_val["Y"]
+          predicty_prob = normalize(np.array(predict_y)[:,np.newaxis], axis=1)
+       
+        
 
-          acc_err = roc_auc_score(testy_label, predicty_prob[:,1])
-      except ValueError as caught_err:
-        print(f"Caught {caught_err} on param {param} fold {i}")
-        continue
+        acc_err = roc_auc_score(testy_label, predicty_prob[:,-1])
+        
+
+      #except ValueError as caught_err:
+      #  print(f"Caught {caught_err} on param {param} fold {i}")
+      #  continue
 
       errs.append(acc_err/len(source_train_cv_val))
       ## select parameters from target

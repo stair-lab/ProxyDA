@@ -13,12 +13,37 @@ from KPLA.models.plain_kernel.cme import ConditionalMeanEmbed
 from KPLA.models.plain_kernel.bridge_h0 import BridgeH0, BridgeH0CLF
 from KPLA.models.plain_kernel.kernel_utils import flatten
 
+from sklearn.calibration import CalibratedClassifierCV
 
 class FullAdapt(KernelMethod):
   """
   Adaptation setting: observe (W,X,Y,C) from the source,
   (W,X,C) from the target
   """
+  def __init__(self,
+               source_train,
+               target_train,
+               source_test,
+               target_test,
+               split,
+               scale=1,
+               lam_set = None,
+               method_set = None,
+               kernel_dict=None):
+  
+    super().__init__(
+               source_train,
+               target_train,
+               source_test,
+               target_test,
+               split,
+               scale,
+               lam_set,
+               method_set,
+               kernel_dict)
+    self.cme_domain = 'source'
+    self.h_domain = 'source'
+    
   def split_data(self):
     #split training data
     n = self.source_train['X'].shape[0]
@@ -135,18 +160,26 @@ class FullAdapt(KernelMethod):
 
     return estimator
 
-  def predict_proba(self, x):
+  def calibrate_classifier(self, calib_x, calib_y):
+    calibrated_clf = CalibratedClassifierCV(self, cv="prefit")
+    calibrated_clf.fit(calib_x, calib_y)
+    self.calibrated_clf = calibrated_clf
+    self.calib_ = True
+
+  
+
+  def predict_proba(self, X):
     """predict probability.
     Args:
       x: covariates, dict or ndarray.
     """
 
-    if isinstance(x, dict):
-      covar_x = x
+    if isinstance(X, dict):
+      covar_x = X
     else:
-      covar_x={'X':x}
+      covar_x={'X':X}
 
-    predict_y = self.predict(covar_x, self.calib_domain, self.calib_domain)
+    predict_y = self.predict(covar_x, self.h_domain, self.cme_domain)
     predict_y_prob = normalize(np.array(predict_y), axis=1)
 
     return predict_y_prob
@@ -278,7 +311,7 @@ class FullAdapt(KernelMethod):
 
     return df
 
-  def evaluation(self, task='r', plot=False):
+  def evaluation(self, task='r', plot=False, calib=False):
     eval_list = []
     print('start evaluation')
     #source evaluation
@@ -288,7 +321,13 @@ class FullAdapt(KernelMethod):
 
     #source on source error
     predict_y = self.predict(source_testx, 'source', 'source')
-    ss_error = self.score(predict_y, source_testy, task)
+    if calib:
+      self.cme_domain = 'source'
+      self.h_domain = 'source'
+      prediecty_proba = self.calibrated_clf.predict_proba(source_testx)
+    else:
+      prediecty_proba = None
+    ss_error = self.score(predict_y, source_testy, task, prediecty_proba)
     eval_list.append(flatten({'task': 'source-source',
                               'predict error': ss_error}))
 
@@ -307,8 +346,15 @@ class FullAdapt(KernelMethod):
 
 
     # target on source error
+    if calib:
+      self.cme_domain = 'target'
+      self.h_domain = 'target'
+      prediecty_proba = self.calibrated_clf.predict_proba(source_testx)
+    else:
+      prediecty_proba = None
+
     predict_y = self.predict(source_testx, 'target', 'target')
-    ts_error = self.score(predict_y, source_testy, task)
+    ts_error = self.score(predict_y, source_testy, task, prediecty_proba)
     eval_list.append(flatten({'task': 'target-source',
                               'predict error': ts_error}))
     if plot:
@@ -329,8 +375,15 @@ class FullAdapt(KernelMethod):
     target_testy = self.target_test['Y']
 
     # target on target errror
+
+    if calib:
+      self.cme_domain = 'target'
+      self.h_domain = 'target'
+      prediecty_proba = self.calibrated_clf.predict_proba(target_testx)
+    else:
+      prediecty_proba = None
     predict_y = self.predict(target_testx, 'target', 'target')
-    tt_error = self.score(predict_y, target_testy, task)
+    tt_error = self.score(predict_y, target_testy, task, prediecty_proba)
     eval_list.append(flatten({'task': 'target-target',
                               'predict error': tt_error}))
 
@@ -350,8 +403,15 @@ class FullAdapt(KernelMethod):
 
 
     # source on target error
+
+    if calib:
+      self.cme_domain = 'source'
+      self.h_domain = 'source'
+      prediecty_proba = self.calibrated_clf.predict_proba(target_testx)
+    else:
+      prediecty_proba = None
     predict_y = self.predict(target_testx, 'source', 'source')
-    st_error = self.score(predict_y,  target_testy, task)
+    st_error = self.score(predict_y,  target_testy, task, prediecty_proba)
     eval_list.append(flatten({'task': 'source-target',
                               'predict error': st_error}))
 
@@ -368,8 +428,14 @@ class FullAdapt(KernelMethod):
       plt.savefig('st.png')
 
     #adaptation error
+    if calib:
+      self.cme_domain = 'target'
+      self.h_domain = 'source'
+      prediecty_proba = self.calibrated_clf.predict_proba(target_testx)
+    else:
+      prediecty_proba = None
     predict_y = self.predict(target_testx, 'source', 'target')
-    adapt_error = self.score(predict_y,  target_testy, task)
+    adapt_error = self.score(predict_y,  target_testy, task, prediecty_proba)
     eval_list.append(flatten({'task': 'adaptation',
                               'predict error': adapt_error}))
 
