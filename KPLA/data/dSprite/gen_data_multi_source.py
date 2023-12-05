@@ -38,6 +38,20 @@ def U2W(U, pos_X_basis, pos_Y_basis):
 
     return np.random.normal(U_W, 0.25)
 
+def CU2Y_v2(C, U, pos_X_basis, pos_Y_basis, task='regression'):
+  var = np.random.normal(0, 0.1, size=U.shape)# * (U/(2*np.pi))
+
+  N = U.shape[0]
+  U_Y = np.zeros((N, 1))
+
+  for i in tqdm(range(N), desc='getting U rotation matrix'):
+    rot_mat = get_rot_mat(U[i][0])
+    U_Y[i][0] = (rot_mat @ np.array(
+        [[pos_X_basis], [pos_Y_basis]]))[1, 0] # pos_Y
+
+  return (5*C*U_Y) + var
+
+
 def generate_samples_Z2U(Z, A, metadata, pos_X_basis, pos_X_basis_idx,
                      pos_Y_basis, pos_Y_basis_idx, imgs, imgs_basis,
                       n_samples=10000, test_size=0.3, task='regression', dom=0,
@@ -55,7 +69,7 @@ def generate_samples_Z2U(Z, A, metadata, pos_X_basis, pos_X_basis_idx,
     Y = CU2Y(C, U, pos_X_basis, pos_Y_basis, task=task)
     W = U2W(U, pos_X_basis, pos_Y_basis)
 
-    if one_hot:
+    if not target:
       Z = OneHotEncoder(categories=[list(range(N_ENVS))]).fit_transform(Z).toarray()
 
     (X_train, X_val,
@@ -79,10 +93,10 @@ def generate_samples_Z2U(Z, A, metadata, pos_X_basis, pos_X_basis_idx,
         test_size=test_size,
         shuffle=True,
     )
-    if not one_hot:
-      Z_train = Z_train.flatten()+1
-      Z_test  = Z_test.flatten()+1
-      Z_val   = Z_val.flatten()+1
+    #if not one_hot:
+    #  Z_train = Z_train.flatten()+1
+    #  Z_test  = Z_test.flatten()+1
+    #  Z_val   = Z_val.flatten()+1
     train = {
         'X': X_train, 'Z': Z_train, 'Y': Y_train, 'W': W_train, 'U': U_train,
         # 'orig_X': X_train,
@@ -136,6 +150,7 @@ def generate_samples_Z2U_v2(Z, A, metadata, pos_X_basis, pos_X_basis_idx,
     X = img2X(imgs_sampled).reshape(U.shape[0], -1)
     C = XU2C(X, U, pos_X_basis, pos_Y_basis, A)
     Y = CU2Y(C, U, pos_X_basis, pos_Y_basis, task=task)
+    Y = CU2Y_v2(C, U, pos_X_basis, pos_Y_basis, task=task)
     W = U2W(U, pos_X_basis, pos_Y_basis)
 
     #if not target:

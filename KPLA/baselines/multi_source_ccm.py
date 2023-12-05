@@ -35,7 +35,7 @@ class MuiltiSourceCCM:
         self.classifiers.append(MLPClassifier(random_state=1, max_iter=max_iter))
       else:
         self.classifiers.append(MLPRegressor(random_state=1, max_iter=max_iter))
-
+    self.task = task
 
   def fit(self, source_data, x_target=None, weight=None):
     # fit KDE
@@ -45,12 +45,16 @@ class MuiltiSourceCCM:
     for idx, train_data in enumerate(source_data):
       x_train = np.array(train_data['X'])
       y_train = np.array(train_data['Y'])
-      long_y += list(np.unique(y_train))
+      if self.task == 'c':
+        long_y += list(np.unique(y_train))
+        y_train = np.array(train_data['Y'])
+      else:
+        y_train = np.array(train_data['Y']).ravel()
 
       self.classifiers[idx].fit(x_train, y_train)
       self.kde_x[idx].fit(x_train)
-
-    self.n_labels_ =  list(set(long_y))
+    if self.task == 'c':
+      self.n_labels_ =  list(set(long_y))
     """
     if (weight == None) and (x_target is not None):
         #learn the weight by solving least-squares
@@ -148,15 +152,13 @@ class MultiSourceUniformReg:
 
   def fit(self, source_data):
 
-    long_y = []
     for i, train_data in enumerate(source_data):
 
       x_train = train_data['X']
-      y_train = train_data['Y']
-      long_y += list(np.unique(y_train))
+      y_train = train_data['Y'].ravel()
 
       self.regressors[i].fit(x_train, y_train)
-    self.n_labels_ =  list(set(long_y))
+
 
     return self
 
