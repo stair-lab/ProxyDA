@@ -39,7 +39,7 @@ parser.add_argument('--dicom_split_path', type=str,
   default=os.path.join("/shared/rsaas/oes2/physionet.org/dicom_data_splits/", data_pkl),
 )
 parser.add_argument('--n_folds', type=int, default=3)
-parser.add_argument('--n_params', type=int, default=1)
+parser.add_argument('--n_params', type=int, default=3)
 parser.add_argument('--u_dim', type=int, default=4)
 parser.add_argument('--u_val', type=str, default='80+')
 parser.add_argument('--u_var', type=str, default='age_old_condition')
@@ -47,7 +47,7 @@ parser.add_argument('--x_dim', type=int, default=1376)
 parser.add_argument('--y_dim', type=int, default=2)
 parser.add_argument('--reduce', type=int, default=64)
 parser.add_argument('--seed', type=int, default=0)
-parser.add_argument('--output_dir', type=str, default='/home/kt14/')
+parser.add_argument('--output_dir', type=str, default='/home/kt14/workbench/backup/')
 
 args = parser.parse_args()
 
@@ -103,20 +103,13 @@ source_val_D = MIMIC(dicom_splits[0]["val"], metadata,
                              verbose=True).generate_data()
 
 source_train = {
-    'X': source_train_D[0],
-    'Y': source_train_D[1],
-    'C': source_train_D[2],
-    'W': source_train_D[3],
-    'U': source_train_D[4]
+    'X': np.concatenate([source_train_D[0], source_val_D[0]], axis=0),
+    'Y': np.concatenate([source_train_D[1], source_val_D[1]], axis=0),
+    'C': np.concatenate([source_train_D[2], source_val_D[2]], axis=0),
+    'W': np.concatenate([source_train_D[3], source_val_D[3]], axis=0),
+    'U': np.concatenate([source_train_D[4], source_val_D[4]], axis=0),
 }
 
-source_val = {
-    'X': source_val_D[0],
-    'Y': source_val_D[1],
-    'C': source_val_D[2],
-    'W': source_val_D[3],
-    'U': source_val_D[4]
-}
 # source_X_scaler = StandardScaler().fit(source_train_D[0][source_train_idx, :])
 # source_W_scaler = StandardScaler().fit(source_train_D[3][source_train_idx, :])
 
@@ -171,22 +164,19 @@ if args.reduce is not None:
   print(f"projecting C to {proj_C.n_components_}")
 
   source_train['X'] = proj_X.transform(source_train['X'])
-  source_val['X'] = proj_X.transform(source_val['X'])
   target_train['X'] = proj_X.transform(target_train['X'])
   source_test['X'] = proj_X.transform(source_test['X'])
   target_test['X'] = proj_X.transform(target_test['X'])
 
   source_train['C'] = proj_C.transform(source_train['C'])
-  source_val['C'] = proj_C.transform(source_val['C'])
   target_train['C'] = proj_C.transform(target_train['C'])
   source_test['C'] = proj_C.transform(source_test['C'])
   target_test['C'] = proj_C.transform(target_test['C'])
 
-source_train['Y'] = np.eye(2)[source_train['Y'].flatten()].reshape(-1, 2)
-source_val['Y'] = np.eye(2)[source_val['Y'].flatten()].reshape(-1, 2)
-source_test['Y'] = np.eye(2)[source_test['Y'].flatten()].reshape(-1, 2)
-target_train['Y'] = np.eye(2)[target_train['Y'].flatten()].reshape(-1, 2)
-target_test['Y'] = np.eye(2)[target_test['Y'].flatten()].reshape(-1, 2)
+source_train['Y'] = np.eye(2)[source_train['Y'].flatten()].reshape(-1, 2)[:,1]
+source_test['Y'] = np.eye(2)[source_test['Y'].flatten()].reshape(-1, 2)[:,1]
+target_train['Y'] = np.eye(2)[target_train['Y'].flatten()].reshape(-1, 2)[:,1]
+target_test['Y'] = np.eye(2)[target_test['Y'].flatten()].reshape(-1, 2)[:,1]
 
 print(f"\nsource train X shape: {source_train['X'].shape}")
 print(f"source test X shape: {source_test['X'].shape}")
@@ -236,7 +226,6 @@ kernel_dict["cme_wc_x"] = {"X": "rbf",
                                  "dim":source_train['C'].shape[1]}]} # Y is (W,C)
 kernel_dict["h0"]       = {"C": "rbf"}
 
-print(source_train['W'])
 print("Startig kernel adaptation tuning.")
 best_estimator, best_params = tune_adapt_model_cv(source_train,
                                                 target_train,
@@ -246,7 +235,7 @@ best_estimator, best_params = tune_adapt_model_cv(source_train,
                                                 kernel_dict,
                                                 model=FullAdapt,
                                                 task="c",
-                                                fit_task = "c",
+                                                fit_task = "r",
                                                 n_params=args.n_params,
                                                 n_fold=args.n_folds,
                                                 min_log=-3,
@@ -259,11 +248,6 @@ lam_set = {"cme": best_params["alpha"],
             "h0": best_params["alpha"], 
             "lam_min":-4, 
             "lam_max":-1}
-
-
-#calibrate dataset
-best_estimator.calibrate_classifier(source_val['X'], source_val['Y'])
-best_estimator.evaluation(task="c", calib=True)
 # scale = best_params["scale"]
 # split = False
 
@@ -279,12 +263,12 @@ best_estimator.evaluation(task="c", calib=True)
 
 # estimator_full.fit(task="c")
 # df = estimator_full.evaluation(task="c")
-df.to_csv(os.path.join(path, f'MIMIC_{date_string}.csv'), sep=",",
+df.to_csv(os.path.join(path, f'MIMIC_{date_string}_reg.csv'), sep=",",
           index=False,
           encoding="utf-8")
 
-with open(os.path.join(path, f'MIMIC_{date_string}.pkl'), 'wb') as f:
+with open(os.path.join(path, f'MIMIC_{date_string}_reg.pkl'), 'wb') as f:
   pickle.dump(RESULTS, f)
 
-with open(os.path.join(path, f'hparams.json'), 'w') as f:
+with open(os.path.join(path, f'hparams_reg.json'), 'w') as f:
   json.dump(best_params, f, indent=4)
