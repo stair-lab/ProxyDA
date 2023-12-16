@@ -29,7 +29,8 @@ class FullAdapt(KernelMethod):
                scale=1,
                lam_set = None,
                method_set = None,
-               kernel_dict=None):
+               kernel_dict=None,
+               thre = 0.5):
   
     super().__init__(
                source_train,
@@ -40,7 +41,8 @@ class FullAdapt(KernelMethod):
                scale,
                lam_set,
                method_set,
-               kernel_dict)
+               kernel_dict,
+               thre)
     self.cme_domain = 'source'
     self.h_domain = 'source'
     
@@ -327,7 +329,7 @@ class FullAdapt(KernelMethod):
       prediecty_proba = self.calibrated_clf.predict_proba(source_testx)
     else:
       prediecty_proba = None
-    ss_error = self.score(predict_y, source_testy, task, prediecty_proba)
+    ss_error = self.score(predict_y, source_testy, task, prediecty_proba, thres=self.thre)
     eval_list.append(flatten({'task': 'source-source',
                               'predict error': ss_error}))
 
@@ -354,7 +356,7 @@ class FullAdapt(KernelMethod):
       prediecty_proba = None
 
     predict_y = self.predict(source_testx, 'target', 'target')
-    ts_error = self.score(predict_y, source_testy, task, prediecty_proba)
+    ts_error = self.score(predict_y, source_testy, task, prediecty_proba, thres=self.thre)
     eval_list.append(flatten({'task': 'target-source',
                               'predict error': ts_error}))
     if plot:
@@ -383,7 +385,7 @@ class FullAdapt(KernelMethod):
     else:
       prediecty_proba = None
     predict_y = self.predict(target_testx, 'target', 'target')
-    tt_error = self.score(predict_y, target_testy, task, prediecty_proba)
+    tt_error = self.score(predict_y, target_testy, task, prediecty_proba, thres=self.thre)
     eval_list.append(flatten({'task': 'target-target',
                               'predict error': tt_error}))
 
@@ -411,7 +413,7 @@ class FullAdapt(KernelMethod):
     else:
       prediecty_proba = None
     predict_y = self.predict(target_testx, 'source', 'source')
-    st_error = self.score(predict_y,  target_testy, task, prediecty_proba)
+    st_error = self.score(predict_y,  target_testy, task, prediecty_proba, thres=self.thre)
     eval_list.append(flatten({'task': 'source-target',
                               'predict error': st_error}))
 
@@ -435,7 +437,7 @@ class FullAdapt(KernelMethod):
     else:
       prediecty_proba = None
     predict_y = self.predict(target_testx, 'source', 'target')
-    adapt_error = self.score(predict_y,  target_testy, task, prediecty_proba)
+    adapt_error = self.score(predict_y,  target_testy, task, prediecty_proba, thres=self.thre)
     eval_list.append(flatten({'task': 'adaptation',
                               'predict error': adapt_error}))
 

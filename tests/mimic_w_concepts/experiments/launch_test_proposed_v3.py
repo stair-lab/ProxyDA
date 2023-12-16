@@ -8,7 +8,7 @@ os.makedirs(jobs_dir, exist_ok=True)
 SCHEDD = htcondor.Schedd()
 
 EXEC = '/home/kt14/miniconda3/envs/work2/bin/python'
-SCRIPT = "/home/kt14/workbench/backup/proxy_latent_shifts/tests/mimic_w_concepts/experiments/test_proposed_v2.py"
+SCRIPT = "/home/kt14/workbench/backup/proxy_latent_shifts/tests/mimic_w_concepts/experiments/test_proposed_v3.py"
 
 req = ''
 req += '(Machine == "vision-21.cs.illinois.edu") || '
@@ -16,7 +16,7 @@ req += '(Machine == "vision-22.cs.illinois.edu") || '
 req += '(Machine == "vision-23.cs.illinois.edu") '
 
 for seed in range(192,202):
-    run_name = f"test_proposed_MIMIC_{seed}_1head_cvaucroc_thre0"
+    run_name = f"test_proposed_MIMIC_{seed}_multihead_cvacc"
     out_dir = f"/home/kt14/workbench/backup/proxy_latent_shifts/tests/mimic_w_concepts/experiments/proposed_results/{run_name}"
     if len(glob.glob(os.path.join(out_dir, '*.csv'))) > 0:
         print(f"Skipping {run_name}.")

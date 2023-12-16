@@ -39,7 +39,7 @@ parser.add_argument('--dicom_split_path', type=str,
   default=os.path.join("/shared/rsaas/oes2/physionet.org/dicom_data_splits/", data_pkl),
 )
 parser.add_argument('--n_folds', type=int, default=3)
-parser.add_argument('--n_params', type=int, default=1)
+parser.add_argument('--n_params', type=int, default=3)
 parser.add_argument('--u_dim', type=int, default=4)
 parser.add_argument('--u_val', type=str, default='80+')
 parser.add_argument('--u_var', type=str, default='age_old_condition')
@@ -188,6 +188,25 @@ source_test['Y'] = np.eye(2)[source_test['Y'].flatten()].reshape(-1, 2)
 target_train['Y'] = np.eye(2)[target_train['Y'].flatten()].reshape(-1, 2)
 target_test['Y'] = np.eye(2)[target_test['Y'].flatten()].reshape(-1, 2)
 
+
+#rewieght the label to {-1, 1}
+idx = np.where(source_train['Y'][:,0]==1)[0]
+source_train['Y'][idx, 0] = -1
+
+idx = np.where(source_val['Y'][:,0]==1)[0]
+source_val['Y'][idx, 0]   = -1
+
+idx = np.where(source_test['Y'][:,0]==1)[0]
+source_test['Y'][idx, 0]  = -1
+
+idx = np.where(target_train['Y'][:,0]==1)[0]
+target_train['Y'][idx, 0] = -1
+
+idx = np.where(target_test['Y'][:,0]==1)[0]
+target_test['Y'][idx, 0]  = -1
+
+
+print(source_train['Y'])
 print(f"\nsource train X shape: {source_train['X'].shape}")
 print(f"source test X shape: {source_test['X'].shape}")
 print(f"target train X shape: {target_train['X'].shape}")
@@ -236,7 +255,7 @@ kernel_dict["cme_wc_x"] = {"X": "rbf",
                                  "dim":source_train['C'].shape[1]}]} # Y is (W,C)
 kernel_dict["h0"]       = {"C": "rbf"}
 
-print(source_train['W'])
+
 print("Startig kernel adaptation tuning.")
 best_estimator, best_params = tune_adapt_model_cv(source_train,
                                                 target_train,
@@ -262,8 +281,8 @@ lam_set = {"cme": best_params["alpha"],
 
 
 #calibrate dataset
-best_estimator.calibrate_classifier(source_val['X'], source_val['Y'])
-best_estimator.evaluation(task="c", calib=True)
+#best_estimator.calibrate_classifier(source_val['X'], source_val['Y'])
+#best_estimator.evaluation(task="c", calib=True)
 # scale = best_params["scale"]
 # split = False
 

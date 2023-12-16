@@ -7,10 +7,11 @@
 
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_squared_error
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, accuracy_score
 from sklearn.preprocessing import normalize
 import numpy as np
 import jax.numpy as jnp
+import copy
 from itertools import product
 from KPLA.models.plain_kernel.adaptation import FullAdapt
 from KPLA.models.plain_kernel.multienv_adaptation import MultiEnvAdapt
@@ -28,7 +29,8 @@ def tune_adapt_model_cv(source_train:  dict,
                         n_params=5,
                         n_fold=5,
                         min_log=-4,
-                        max_log=4,):
+                        max_log=4,
+                        thre = 0.):
 
   best_estimator = None
   best_err = np.inf if task=="r" else -np.inf
@@ -66,7 +68,8 @@ def tune_adapt_model_cv(source_train:  dict,
                         scale,
                         lam_set,
                         method_set,
-                        kernel_dict)
+                        kernel_dict,
+                        thre)
 
       estimator.fit(fit_task)
       ##select parameters from source
@@ -81,15 +84,27 @@ def tune_adapt_model_cv(source_train:  dict,
 
       elif task == "c":
         if len(source_train_cv_val["Y"].shape)>=2:
-          testy_label = np.array(jnp.argmax(source_train_cv_val["Y"], axis=1))
-          predicty_prob = normalize(np.array(predict_y), axis=1)
+          testy_label = np.array(jnp.argmax(jnp.abs(source_train_cv_val["Y"]), axis=1))
+          predicty_prob = normalize(np.array(jnp.abs(predict_y)), axis=1)
+          predicty_label = np.array(jnp.argmax(jnp.abs(predict_y), axis=1))
         else:
-          testy_label=source_train_cv_val["Y"]
+          testy_label=copy.copy(source_train_cv_val["Y"])
           predicty_prob = normalize(np.array(predict_y)[:,np.newaxis], axis=1)
-       
-        
+          #correct -1 to 0
+          print(np.unique(testy_label))
+          idx = np.where(testy_label == -1)[0]
 
-        acc_err = roc_auc_score(testy_label, predicty_prob[:,-1])
+          testy_label[idx] = 0.
+
+          idx1 = np.where(predict_y>=thre)[0]
+          predicty_label = np.zeros(predict_y.shape[0], dtype=np.int8)
+          predicty_label[idx1] = 1 
+
+       
+        #print(testy_label)
+
+        #acc_err = roc_auc_score(testy_label, predicty_prob[:,-1])
+        acc_err = accuracy_score(testy_label, predicty_label)
         
 
       #except ValueError as caught_err:
@@ -174,8 +189,8 @@ def tune_adapt_model(source_train: dict,
                                    np.array(predict_y))
 
     elif task == "c":
-      testy_label = np.array(jnp.argmax(source_val["Y"], axis=1))
-      predicty_prob = normalize(np.array(predict_y), axis=1)
+      testy_label = np.array(jnp.argmax(jnp.abs(source_val["Y"]), axis=1))
+      predicty_prob = normalize(np.array(jnp.abs(predict_y)), axis=1)
 
       acc_err = roc_auc_score(testy_label, predicty_prob[:,1])
 
@@ -250,8 +265,8 @@ def tune_multienv_adapt_model(source_train_list: list,
                                       np.array(predict_y))
 
       elif task == "c":
-        testy_label = np.array(jnp.argmax(source_val["Y"], axis=1))
-        predicty_prob = normalize(np.array(predict_y), axis=1)
+        testy_label = np.array(jnp.argmax(jnp.abs(source_val["Y"]), axis=1))
+        predicty_prob = normalize(np.array(jnp.abs(predict_y)), axis=1)
 
         acc_err += roc_auc_score(testy_label, predicty_prob[:,1])
 
@@ -338,8 +353,8 @@ def tune_multienv_adapt_model_cv(source_train_list:  dict,
                                         np.array(predict_y))
 
         elif task == "c":
-          testy_label = np.array(jnp.argmax(source_val["Y"], axis=1))
-          predicty_prob = normalize(np.array(predict_y), axis=1)
+          testy_label = np.array(jnp.argmax(jnp.abs(source_val["Y"]), axis=1))
+          predicty_prob = normalize(np.array(jnp.abs(predict_y)), axis=1)
 
           acc_err += roc_auc_score(testy_label, predicty_prob[:,1])
 

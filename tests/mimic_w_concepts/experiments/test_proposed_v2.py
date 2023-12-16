@@ -102,14 +102,19 @@ source_val_D = MIMIC(dicom_splits[0]["val"], metadata,
                              batch_size=64, U=["U"],
                              verbose=True).generate_data()
 
+#correct Y label to {-1, 1}
+
+
 source_train = {
     'X': np.concatenate([source_train_D[0], source_val_D[0]], axis=0),
-    'Y': np.concatenate([source_train_D[1], source_val_D[1]], axis=0),
+    'Y': np.concatenate([source_train_D[1]*2-1, source_val_D[1]*2-1], axis=0),
     'C': np.concatenate([source_train_D[2], source_val_D[2]], axis=0),
     'W': np.concatenate([source_train_D[3], source_val_D[3]], axis=0),
     'U': np.concatenate([source_train_D[4], source_val_D[4]], axis=0),
 }
 
+
+print('label of Y', np.unique(source_train['Y']))
 # source_X_scaler = StandardScaler().fit(source_train_D[0][source_train_idx, :])
 # source_W_scaler = StandardScaler().fit(source_train_D[3][source_train_idx, :])
 
@@ -117,13 +122,15 @@ source_test_D = MIMIC(dicom_splits[0]["test"], metadata,
                              CXR_EMB_PATH, REPORT_EMB_PATH,
                              batch_size=64, U=["U"],
                              verbose=True).generate_data()
+
 source_test = {
     'X': source_test_D[0],
-    'Y': source_test_D[1],
+    'Y': source_test_D[1]*2-1,
     'C': source_test_D[2],
     'W': source_test_D[3],
     'U': source_test_D[4],
 }
+print('label of Y', np.unique(source_test['Y']))
 print("loading target")
 target_train_D = MIMIC(dicom_splits[1]["train"], metadata,
                              CXR_EMB_PATH, REPORT_EMB_PATH,
@@ -134,9 +141,12 @@ target_val_D = MIMIC(dicom_splits[1]["val"], metadata,
                              batch_size=64, U=["U"],
                              verbose=True).generate_data()
 
+
+
+
 target_train = {
     'X': np.concatenate([target_train_D[0], target_val_D[0]], axis=0),
-    'Y': np.concatenate([target_train_D[1], target_val_D[1]], axis=0),
+    'Y': np.concatenate([target_train_D[1]*2-1, target_val_D[1]*2-1], axis=0),
     'C': np.concatenate([target_train_D[2], target_val_D[2]], axis=0),
     'W': np.concatenate([target_train_D[3], target_val_D[3]], axis=0),
     'U': np.concatenate([target_train_D[4], target_val_D[4]], axis=0),
@@ -146,9 +156,11 @@ target_test_D = MIMIC(dicom_splits[1]["test"], metadata,
                              CXR_EMB_PATH, REPORT_EMB_PATH,
                              batch_size=64, U=["U"],
                              verbose=True).generate_data()
+
+
 target_test = {
     'X': target_test_D[0],
-    'Y': target_test_D[1],
+    'Y': target_test_D[1]*2-1,
     'C': target_test_D[2],
     'W': target_test_D[3],
     'U': target_test_D[4],
@@ -173,11 +185,17 @@ if args.reduce is not None:
   source_test['C'] = proj_C.transform(source_test['C'])
   target_test['C'] = proj_C.transform(target_test['C'])
 
-source_train['Y'] = np.eye(2)[source_train['Y'].flatten()].reshape(-1, 2)[:,1]
-source_test['Y'] = np.eye(2)[source_test['Y'].flatten()].reshape(-1, 2)[:,1]
-target_train['Y'] = np.eye(2)[target_train['Y'].flatten()].reshape(-1, 2)[:,1]
-target_test['Y'] = np.eye(2)[target_test['Y'].flatten()].reshape(-1, 2)[:,1]
+#source_train['Y'] = np.eye(2)[source_train['Y'].flatten()].reshape(-1, 2)[:,1]
+#source_test['Y'] = np.eye(2)[source_test['Y'].flatten()].reshape(-1, 2)[:,1]
+#target_train['Y'] = np.eye(2)[target_train['Y'].flatten()].reshape(-1, 2)[:,1]
+#target_test['Y'] = np.eye(2)[target_test['Y'].flatten()].reshape(-1, 2)[:,1]
 
+
+source_train['Y'] = source_train['Y'].flatten()
+source_test['Y']  = source_test['Y'].flatten()
+target_train['Y'] = target_train['Y'].flatten()
+target_test['Y']  = target_test['Y'].flatten()
+print(np.unique(source_train['Y']))
 print(f"\nsource train X shape: {source_train['X'].shape}")
 print(f"source test X shape: {source_test['X'].shape}")
 print(f"target train X shape: {target_train['X'].shape}")
@@ -240,6 +258,7 @@ best_estimator, best_params = tune_adapt_model_cv(source_train,
                                                 n_fold=args.n_folds,
                                                 min_log=-3,
                                                 max_log=1,
+                                                thre = 0.
                                                 )
 
 df = best_estimator.evaluation(task="c")

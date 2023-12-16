@@ -13,6 +13,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.metrics import log_loss
 from sklearn.preprocessing import normalize
 from sklearn.base import BaseEstimator
+import copy
 # Define Sklearn evaluation functions
 def soft_accuracy(y_true, y_pred, threshold=0.5, **kwargs):
   return accuracy_score(y_true, y_pred >= threshold, **kwargs)
@@ -61,7 +62,8 @@ class KernelMethod(BaseEstimator):
                scale=1,
                lam_set = None,
                method_set = None,
-               kernel_dict=None):
+               kernel_dict=None,
+               thre = 0.5):
     """ Initiate parameters
     Args:
         source_train: dictionary, keys: C,W,X,Y
@@ -87,6 +89,7 @@ class KernelMethod(BaseEstimator):
     self.split = split
     self._is_fitted = False
     self.calib_domain = "source"
+    self.thre = thre
     if lam_set is None:
       lam_set={"cme": None, "h0": None, "m0": None}
 
@@ -153,7 +156,7 @@ class KernelMethod(BaseEstimator):
     raise NotImplementedError("Implemented in child class.")
 
 
-  def score(self, predict_y, test_y, task="r", predicty_prob=None):
+  def score(self, predict_y, test_y, task="r", predicty_prob=None, thres=0.5):
     ## Fix shape
     err_message = "unresolveable shape mismatch between test_y and predict_y"
 
@@ -179,23 +182,30 @@ class KernelMethod(BaseEstimator):
       
       if len(predict_y.shape) >= 2:
         if predict_y.shape[1] >= 2:
-          testy_label = np.array(jnp.argmax(test_y, axis=1))
-          predicty_label = np.array(jnp.argmax(predict_y, axis=1))
+          # for multi-head regression
+          testy_label = np.array(jnp.argmax(jnp.abs(test_y), axis=1))
+          predicty_label = np.array(jnp.argmax(jnp.abs(predict_y), axis=1))
           #predicty_prob = softmax(np.array(predict_y), axis=1)
           if predicty_prob is None:
-            predicty_prob = normalize(np.array(predict_y), axis=1)
+            predicty_prob = normalize(np.array(jnp.abs(predict_y)), axis=1)
         else:
-          testy_label = test_y
-          idx1 = np.where(predict_y[:,-1]>=0.5)[0]
+          testy_label = copy.copy(test_y)
+          idx = np.where(testy_label==-1)[0]
+          testy_label[idx] = 0
+          idx1 = np.where(predict_y[:,-1]>=thres)[0]
           predicty_label = np.zeros(predict_y.shape[0], dtype=np.int8)
           predicty_label[idx1] = 1 
           if predicty_prob is None:
             predicty_prob = predict_y
       
       else:
-          idx1 = np.where(predict_y>=0.5)[0]
+          idx1 = np.where(predict_y>=thres)[0]
 
-          testy_label = test_y
+          testy_label = copy.copy(test_y)
+
+          #correct -1 to 0
+          idx = np.where(testy_label==-1)[0]
+          testy_label[idx] = 0
           predicty_label = np.zeros(predict_y.shape[0], dtype=np.int8)
           predicty_label[idx1] = 1 
           if predicty_prob is None:
