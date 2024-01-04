@@ -77,39 +77,19 @@ def tune_adapt_model_cv(source_train:  dict,
                                       "source", 
                                       "source")
       
-      #try:
-      if task == "r":
-        acc_err = mean_squared_error(np.array(source_train_cv_val["Y"]),
-                                    np.array(predict_y))
+      try:
+        if task == "r":
+          acc_err = mean_squared_error(np.array(source_train_cv_val["Y"]),
+                                      np.array(predict_y))
 
-      elif task == "c":
-        if len(source_train_cv_val["Y"].shape)>=2:
-          testy_label = np.array(jnp.argmax(jnp.abs(source_train_cv_val["Y"]), axis=1))
-          predicty_prob = normalize(np.array(jnp.abs(predict_y)), axis=1)
-          predicty_label = np.array(jnp.argmax(jnp.abs(predict_y), axis=1))
-        else:
-          testy_label=copy.copy(source_train_cv_val["Y"])
-          predicty_prob = normalize(np.array(predict_y)[:,np.newaxis], axis=1)
-          #correct -1 to 0
-          print(np.unique(testy_label))
-          idx = np.where(testy_label == -1)[0]
+        elif task == "c":
+          testy_label = np.array(jnp.argmax(source_train_cv_val["Y"], axis=1))
+          predicty_prob = normalize(np.array(predict_y), axis=1)
 
-          testy_label[idx] = 0.
-
-          idx1 = np.where(predict_y>=thre)[0]
-          predicty_label = np.zeros(predict_y.shape[0], dtype=np.int8)
-          predicty_label[idx1] = 1 
-
-       
-        #print(testy_label)
-
-        #acc_err = roc_auc_score(testy_label, predicty_prob[:,-1])
-        acc_err = accuracy_score(testy_label, predicty_label)
-        
-
-      #except ValueError as caught_err:
-      #  print(f"Caught {caught_err} on param {param} fold {i}")
-      #  continue
+          acc_err = roc_auc_score(testy_label, predicty_prob[:,1])
+      except ValueError as caught_err:
+        print(f"Caught {caught_err} on param {param} fold {i}")
+        continue
 
       errs.append(acc_err/len(source_train_cv_val))
       ## select parameters from target
@@ -309,7 +289,8 @@ def tune_multienv_adapt_model_cv(source_train_list:  dict,
   best_params = {}
 
   print(f"{len(params)} parameter combinations w/ {n_fold} folds.")
-  for alpha, alpha2, scale in params:
+
+  for param, (alpha, alpha2, scale) in enumerate(params):
     kf = KFold(n_splits=n_fold, random_state=None, shuffle=False)
     lam_set = {"cme": alpha,
                "m0": alpha2,
@@ -348,16 +329,20 @@ def tune_multienv_adapt_model_cv(source_train_list:  dict,
         predict_y = estimator.predict({"X": source_val["X"]},
                                     "source", 
                                     "source", idx)
-        if task == "r":
-          acc_err += mean_squared_error(np.array(source_val["Y"]),
+        
+        try:
+          if task == "r":
+            acc_err = mean_squared_error(np.array(source_train_cv_val["Y"]),
                                         np.array(predict_y))
 
-        elif task == "c":
-          testy_label = np.array(jnp.argmax(jnp.abs(source_val["Y"]), axis=1))
-          predicty_prob = normalize(np.array(jnp.abs(predict_y)), axis=1)
+          elif task == "c":
+            testy_label = np.array(jnp.argmax(source_train_cv_val["Y"], axis=1))
+            predicty_prob = normalize(np.array(predict_y), axis=1)
 
-          acc_err += roc_auc_score(testy_label, predicty_prob[:,1])
-
+            acc_err = roc_auc_score(testy_label, predicty_prob[:,1])
+        except ValueError as caught_err:
+          print(f"Caught {caught_err} on param {param} fold {i}")
+          continue
       errs.append(acc_err/len(source_train_cv_val))
       ## select parameters from target
       improve_r = (acc_err < best_err_i) and task == "r"
