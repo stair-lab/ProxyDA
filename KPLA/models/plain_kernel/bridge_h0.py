@@ -167,7 +167,7 @@ class BridgeH0:
     v = vmap(h_wc, (1,1))
     return v(ker_cnewc, ker_wnew)
 
-  def get_expy_x(self, new_x, cme_wc_x):
+  def get_exp_y_x(self, new_x, cme_wc_x):
     """ computing E[Y|c,x]=<h0, phi(c) otimes mu_w|x,c>
     Args:
       new_x: ndarray shape=(n4_samples, n_features)

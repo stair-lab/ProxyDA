@@ -13,6 +13,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.metrics import log_loss
 from sklearn.preprocessing import normalize
 from sklearn.base import BaseEstimator
+import copy
 # Define Sklearn evaluation functions
 def soft_accuracy(y_true, y_pred, threshold=0.5, **kwargs):
   return accuracy_score(y_true, y_pred >= threshold, **kwargs)
@@ -61,7 +62,8 @@ class KernelMethod(BaseEstimator):
                scale=1,
                lam_set = None,
                method_set = None,
-               kernel_dict=None):
+               kernel_dict=None,
+               thre = 0.5):
     """ Initiate parameters
     Args:
         source_train: dictionary, keys: C,W,X,Y
@@ -87,6 +89,7 @@ class KernelMethod(BaseEstimator):
     self.split = split
     self._is_fitted = False
     self.calib_domain = "source"
+    self.thre = thre
     if lam_set is None:
       lam_set={"cme": None, "h0": None, "m0": None}
 
@@ -138,7 +141,7 @@ class KernelMethod(BaseEstimator):
     self._is_fitted = True
     if task == "c":
       #print(np.array(self.source_train["Y"]))
-      self.classes_ = jnp.arange(self.source_train["Y"].shape[1])
+      self.classes_ = [i for i in range(self.source_train["Y"].shape[1])]
 
   def _fit_one_domain(self, domain_data, task):
     """Fits the model to the training data."""
@@ -153,9 +156,11 @@ class KernelMethod(BaseEstimator):
     raise NotImplementedError("Implemented in child class.")
 
 
-  def score(self, predict_y, test_y, task="r"):
+  def score(self, predict_y, test_y, task="r", predicty_prob=None, thres=0.5):
     ## Fix shape
     err_message = "unresolveable shape mismatch between test_y and predict_y"
+
+    
     if task == "r":
       if test_y.shape > predict_y.shape:
         if not test_y.ndim == predict_y.ndim + 1:
@@ -174,10 +179,37 @@ class KernelMethod(BaseEstimator):
       error = {}
 
 
-      testy_label = np.array(jnp.argmax(test_y, axis=1))
-      predicty_label = np.array(jnp.argmax(predict_y, axis=1))
-      #predicty_prob = softmax(np.array(predict_y), axis=1)
-      predicty_prob = normalize(np.array(predict_y), axis=1)
+      
+      if len(predict_y.shape) >= 2:
+        if predict_y.shape[1] >= 2:
+          # for multi-head regression
+          testy_label = np.array(jnp.argmax(jnp.abs(test_y), axis=1))
+          predicty_label = np.array(jnp.argmax(jnp.abs(predict_y), axis=1))
+          #predicty_prob = softmax(np.array(predict_y), axis=1)
+          if predicty_prob is None:
+            predicty_prob = normalize(np.array(jnp.abs(predict_y)), axis=1)
+        else:
+          testy_label = copy.copy(test_y)
+          idx = np.where(testy_label==-1)[0]
+          testy_label[idx] = 0
+          idx1 = np.where(predict_y[:,-1]>=thres)[0]
+          predicty_label = np.zeros(predict_y.shape[0], dtype=np.int8)
+          predicty_label[idx1] = 1 
+          if predicty_prob is None:
+            predicty_prob = predict_y
+      
+      else:
+          idx1 = np.where(predict_y>=thres)[0]
+
+          testy_label = copy.copy(test_y)
+
+          #correct -1 to 0
+          idx = np.where(testy_label==-1)[0]
+          testy_label[idx] = 0
+          predicty_label = np.zeros(predict_y.shape[0], dtype=np.int8)
+          predicty_label[idx1] = 1 
+          if predicty_prob is None:
+            predicty_prob = predict_y[:, np.newaxis]
 
 
 
@@ -186,7 +218,7 @@ class KernelMethod(BaseEstimator):
         if eva[0] == "hard_acc":
           error[eva[0]] = eva[1](testy_label, predicty_label)
         else:
-          error[eva[0]] = eva[1](testy_label, predicty_prob[:,1])
+          error[eva[0]] = eva[1](testy_label, predicty_prob[:,-1])
     return error
 
   def __sklearn_is_fitted__(self):

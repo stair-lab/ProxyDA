@@ -7,10 +7,11 @@
 
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_squared_error
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, accuracy_score
 from sklearn.preprocessing import normalize
 import numpy as np
 import jax.numpy as jnp
+import copy
 from itertools import product
 from KPLA.models.plain_kernel.adaptation import FullAdapt
 from KPLA.models.plain_kernel.multienv_adaptation import MultiEnvAdapt
@@ -23,11 +24,13 @@ def tune_adapt_model_cv(source_train:  dict,
                         method_set: dict,
                         kernel_dict: dict,
                         model, #function class object
-                        task="r",
+                        task="c",
+                        fit_task = "r",
                         n_params=5,
                         n_fold=5,
                         min_log=-4,
-                        max_log=4,):
+                        max_log=4,
+                        thre = 0.):
 
   best_estimator = None
   best_err = np.inf if task=="r" else -np.inf
@@ -65,9 +68,10 @@ def tune_adapt_model_cv(source_train:  dict,
                         scale,
                         lam_set,
                         method_set,
-                        kernel_dict)
+                        kernel_dict,
+                        thre)
 
-      estimator.fit(task)
+      estimator.fit(fit_task)
       ##select parameters from source
       predict_y = estimator.predict({"X": source_train_cv_val["X"]},
                                       "source", 
@@ -165,8 +169,8 @@ def tune_adapt_model(source_train: dict,
                                    np.array(predict_y))
 
     elif task == "c":
-      testy_label = np.array(jnp.argmax(source_val["Y"], axis=1))
-      predicty_prob = normalize(np.array(predict_y), axis=1)
+      testy_label = np.array(jnp.argmax(jnp.abs(source_val["Y"]), axis=1))
+      predicty_prob = normalize(np.array(jnp.abs(predict_y)), axis=1)
 
       acc_err = roc_auc_score(testy_label, predicty_prob[:,1])
 
@@ -241,8 +245,8 @@ def tune_multienv_adapt_model(source_train_list: list,
                                       np.array(predict_y))
 
       elif task == "c":
-        testy_label = np.array(jnp.argmax(source_val["Y"], axis=1))
-        predicty_prob = normalize(np.array(predict_y), axis=1)
+        testy_label = np.array(jnp.argmax(jnp.abs(source_val["Y"]), axis=1))
+        predicty_prob = normalize(np.array(jnp.abs(predict_y)), axis=1)
 
         acc_err += roc_auc_score(testy_label, predicty_prob[:,1])
 
@@ -285,6 +289,7 @@ def tune_multienv_adapt_model_cv(source_train_list:  dict,
   best_params = {}
 
   print(f"{len(params)} parameter combinations w/ {n_fold} folds.")
+
   for param, (alpha, alpha2, scale) in enumerate(params):
     kf = KFold(n_splits=n_fold, random_state=None, shuffle=False)
     lam_set = {"cme": alpha,
