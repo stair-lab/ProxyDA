@@ -150,7 +150,7 @@ def generate_samples_Z2U_v2(Z, A, metadata, pos_X_basis, pos_X_basis_idx,
     X = img2X(imgs_sampled).reshape(U.shape[0], -1)
     C = XU2C(X, U, pos_X_basis, pos_Y_basis, A)
     Y = CU2Y(C, U, pos_X_basis, pos_Y_basis, task=task)
-    Y = CU2Y_v2(C, U, pos_X_basis, pos_Y_basis, task=task)
+    Y = CU2Y(C, U, pos_X_basis, pos_Y_basis, task=task)
     W = U2W(U, pos_X_basis, pos_Y_basis)
 
     #if not target:

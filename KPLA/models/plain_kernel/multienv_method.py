@@ -157,6 +157,8 @@ class MultiKernelMethod(KernelMethod):
     for i in range(n_env):
       source_testx = {}
       source_testx['X'] = self.source_test[i]['X']
+      #source_testx['Z'] = self.source_test[i]['Z']
+      #target_testx['Z'] = self.source_test[i]['Z']
       source_testy = self.source_test[i]['Y']
 
       #source on source error
@@ -203,6 +205,10 @@ class MultiKernelMethod(KernelMethod):
 
     if cme_domain == 'source':
       cme_w_x = self.source_estimator['cme_w_x'][env_idx]
+      #cme_w_xz = self.source_estimator['cme_w_xz']
+
+      #predicty = m0.get_exp_y_xz(testX, cme_w_xz)
+      
     else:
       cme_w_x = self.target_estimator['cme_w_x'][0]
 

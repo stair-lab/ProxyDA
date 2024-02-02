@@ -155,13 +155,13 @@ class BridgeM0:
     """
     # compute K_newWW
 
-    ker_wneww = ker_mat(jnp.array(self.W), jnp.array(new_w),
+    ker_wneww = ker_mat(jnp.array(self.w), jnp.array(new_w),
                         kernel=self.kernel_dict["W"],
                         scale=self.w_sc) #(n1_sample, n3_sample)
     ker_wneww = mat_mul(ker_wneww, gamma_x)
 
     # compute K_newCC
-    ker_xnewx = ker_mat(jnp.array(self.X), jnp.array(new_x),
+    ker_xnewx = ker_mat(jnp.array(self.x), jnp.array(new_x),
                         kernel=self.kernel_dict["X"],
                         scale=self.sc) #(n2_sample, n3_sample)
 
@@ -170,6 +170,16 @@ class BridgeM0:
 
     v = vmap(h_wx, (1,1))
     return v(ker_xnewx, ker_wneww)
+    
+  def get_exp_y_xz(self, covar, cme_w_xz):
+    params = cme_w_xz.get_mean_embed(covar)
+    gamma_xz = params["Gamma"]
+    new_w = params["Y"]
+
+    kxtalphakw = self(new_w, covar["X"], gamma_xz)
+    return kxtalphakw
+
+
 
   def get_exp_y_x(self, new_x, cme_w_x):
     """ when computing E[Y|c,x]=<m0, phi(c) otimes mu_w|x,c>
@@ -387,14 +397,14 @@ class BridgeM0CLF(BridgeM0):
     """
     # compute K_newWW
 
-    ker_wneww = ker_mat(jnp.array(self.W), jnp.array(new_w),
+    ker_wneww = ker_mat(jnp.array(self.w), jnp.array(new_w),
                         kernel=self.kernel_dict["W"],
                         scale=self.w_sc) #(n1_sample, n3_sample)
 
     ker_wneww = mat_mul(ker_wneww, gamma_x)
 
     # compute K_newCC
-    ker_xnewx = ker_mat(jnp.array(self.X), jnp.array(new_x),
+    ker_xnewx = ker_mat(jnp.array(self.x), jnp.array(new_x),
                         kernel=self.kernel_dict["X"],
                         scale=self.sc) #(n2_sample, n3_sample)
 

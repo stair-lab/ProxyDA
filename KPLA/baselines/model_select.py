@@ -13,9 +13,9 @@ def select_kernel_ridge_model(model,
                               x,
                               y,
                               sample_weight=None,
-                              n_params=8,
+                              n_params=6,
                               n_fold=5,
-                              min_val=-4,
+                              min_val=-3,
                               max_val=3):
   param_grid = {
       # Adjust the range as needed

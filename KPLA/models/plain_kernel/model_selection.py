@@ -277,18 +277,23 @@ def tune_multienv_adapt_model_cv(source_train_list:  dict,
                                 n_params=5,
                                 n_fold=5,
                                 min_log=-4,
-                                max_log=4):
+                                max_log=4,
+                                fix_scale=False):
 
   best_estimator = None
   best_err = np.inf if task=="r" else -np.inf
-
-  params = product(np.logspace(min_log, max_log, n_params).tolist(), #alpha
+  if fix_scale:
+    params = product(np.logspace(min_log, max_log, n_params).tolist(), #alpha
                     np.logspace(min_log, max_log, n_params).tolist(), #alpha2
-                    np.logspace(min_log, max_log, n_params).tolist()) #scale
+                    [1.]) #scale
+  else:
+    params = product(np.logspace(min_log, max_log, n_params).tolist(), #alpha
+                      np.logspace(min_log, max_log, n_params).tolist(), #alpha2
+                      np.logspace(min_log, max_log, n_params).tolist()) #scale
 
   best_params = {}
 
-  print(f"{len(params)} parameter combinations w/ {n_fold} folds.")
+  #print(f"{len(params)} parameter combinations w/ {n_fold} folds.")
 
   for param, (alpha, alpha2, scale) in enumerate(params):
     kf = KFold(n_splits=n_fold, random_state=None, shuffle=False)
@@ -329,14 +334,17 @@ def tune_multienv_adapt_model_cv(source_train_list:  dict,
         predict_y = estimator.predict({"X": source_val["X"]},
                                     "source", 
                                     "source", idx)
-        
+        #predict_y = estimator.predict({"X": source_val["X"], 
+        #                               "Z": source_val["Z"]},
+        #                            "source", 
+        #                            "source", idx)
         try:
           if task == "r":
-            acc_err = mean_squared_error(np.array(source_train_cv_val["Y"]),
+            acc_err = mean_squared_error(np.array(source_val["Y"]),
                                         np.array(predict_y))
 
           elif task == "c":
-            testy_label = np.array(jnp.argmax(source_train_cv_val["Y"], axis=1))
+            testy_label = np.array(jnp.argmax(source_val["Y"], axis=1))
             predicty_prob = normalize(np.array(predict_y), axis=1)
 
             acc_err = roc_auc_score(testy_label, predicty_prob[:,1])

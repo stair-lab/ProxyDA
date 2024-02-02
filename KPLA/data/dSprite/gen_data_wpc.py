@@ -44,10 +44,10 @@ def U2imgs(U, metadata, pos_X_basis_idx, pos_Y_basis_idx, imgs, imgs_basis):
   N = U.shape[0]
   img_basis = np.random.randint(3, size=N)
   latents = np.zeros((N, 6))
-  latents[:, 1] = 2 # img_basis
-  latents[:, 2] = 5
-  latents[:, -2] = pos_X_basis_idx
-  latents[:, -1] = pos_Y_basis_idx
+  latents[:, 1] = 2 # img_basis #shape
+  latents[:, 2] = 5 # fix the scale - replace this with U (6)
+  latents[:, -2] = pos_X_basis_idx #xpos (32)
+  latents[:, -1] = pos_Y_basis_idx #ypos (32)
 
   latents = latents.astype(int)
   indices = latent_to_index(latents, metadata)
