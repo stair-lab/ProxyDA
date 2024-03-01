@@ -11,9 +11,13 @@ import numpy as np
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import log_loss
+from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import normalize
 from sklearn.base import BaseEstimator
 import copy
+
+
+
 # Define Sklearn evaluation functions
 def soft_accuracy(y_true, y_pred, threshold=0.5, **kwargs):
   return accuracy_score(y_true, y_pred >= threshold, **kwargs)
@@ -58,7 +62,7 @@ class KernelMethod(BaseEstimator):
                target_train,
                source_test,
                target_test,
-               split,
+               split=False,
                scale=1,
                lam_set = None,
                method_set = None,
@@ -66,15 +70,15 @@ class KernelMethod(BaseEstimator):
                thre = 0.5):
     """ Initiate parameters
     Args:
-        source_train: dictionary, keys: C,W,X,Y
-        target_train: dictionary, keys: C, W, X, Y
-        source_test:  dictionary, keys: X, Y
-        target_test:  dictionary, keys: X, Y
+        source_train: dict, keys: C,W,X,Y
+        target_train: dict, keys: C, W, X, Y
+        source_test:  dict, keys: X, Y
+        target_test:  dict, keys: X, Y
         split: Boolean, split the training dataset or not. 
               If True, the samples are evenly split into groups. 
               Hence, each estimator receive smaller number of training samples.  
         scale: length-scale of the kernel function, default: 1.  
-        lam_set: a dictionary of tuning parameter, 
+        lam_set: a dict of tuning parameter, 
                 set None for leave-one-out estimation
         For example, lam_set={"cme": lam1, "h0": lam2, "m0": lam3}
         method_set: a dictionary of optimization methods for 
@@ -113,11 +117,11 @@ class KernelMethod(BaseEstimator):
 
   def get_params(self):
     params = {}
-    params["lam_set"] = self.lam_set
-    params["method_set"] = self.method_set
+    params["lam_set"]     = self.lam_set
+    params["method_set"]  = self.method_set
     params["kernel_dict"] = self.kernel_dict
-    params["split"] = self.split
-    params["scale"] = self.sc
+    params["split"]       = self.split
+    params["scale"]       = self.sc
 
     return params
 
@@ -128,7 +132,14 @@ class KernelMethod(BaseEstimator):
     self.split       = params["split"]
     self.sc          = params["scale"]
 
-  def fit(self, task="r"):
+  def fit(self, task="r", train_target=True):
+    """ fit the model
+    Args:
+      task: "r" for regression, 
+            "c" for classification (multi-head regression)
+      train_target: train target domain or not, Boolean
+                    if False, only learn the adaptation part
+    """
     #split dataset
     if self.split:
       self.split_data()
@@ -137,13 +148,21 @@ class KernelMethod(BaseEstimator):
     self.source_estimator =  self._fit_one_domain(self.source_train, task)
 
     # learn estimators from the target domain
-    self.target_estimator =  self._fit_one_domain(self.target_train, task)
+    if train_target:
+      self.target_estimator =  self._fit_one_domain(self.target_train, task)
+    else:
+      self.target_estimator = self._fit_target_domain(self.target_train, task)
+    
     self._is_fitted = True
     if task == "c":
       #print(np.array(self.source_train["Y"]))
       self.classes_ = [i for i in range(self.source_train["Y"].shape[1])]
 
   def _fit_one_domain(self, domain_data, task):
+    """Fits the model to the training data."""
+    raise NotImplementedError("Implemented in child class.")
+  
+  def _fit_target_domain(self, domain_data, task):
     """Fits the model to the training data."""
     raise NotImplementedError("Implemented in child class.")
 
@@ -157,11 +176,21 @@ class KernelMethod(BaseEstimator):
 
 
   def score(self, predict_y, test_y, task="r", predicty_prob=None, thres=0.5):
+    """ score function
+    Args:
+      predict_y:     prediected Y, (n_sample, ) or (n_sample, n_classes)
+      test_y:        true Y, (n_sample, ) or (n_samples, n_classes)
+      task:          evaluation task:
+                     "r" for regression,
+                     "c" for classification
+      predicty_prob: the probability of each class (n_sample, n_classes)
+      thres:         threshold for classification, float
+    """
     ## Fix shape
     err_message = "unresolveable shape mismatch between test_y and predict_y"
-
-    
-    if task == "r":
+    test_y    = test_y.squeeze()
+    predict_y = predict_y.squeeze()
+    if task == "r": #mse score for regression task
       if test_y.shape > predict_y.shape:
         if not test_y.ndim == predict_y.ndim + 1:
           if not test_y.shape[:-1] == predict_y.shape:
@@ -173,22 +202,23 @@ class KernelMethod(BaseEstimator):
           if not test_y.shape == predict_y.shape[:-1]:
             raise AssertionError(err_message)
         test_y = test_y.reshape(predict_y.shape)
-      error =  {"l2":np.sum((test_y-predict_y)**2)/predict_y.shape[0]}
+      error = {"l2": mean_squared_error(np.array(test_y), np.array(predict_y))}
+      #error =  {"l2":np.sum((test_y-predict_y)**2)/predict_y.shape[0]}
 
-    elif task == "c":
+    elif task == "c": #classification task
       error = {}
-
 
       
       if len(predict_y.shape) >= 2:
         if predict_y.shape[1] >= 2:
-          # for multi-head regression
-          testy_label = np.array(jnp.argmax(jnp.abs(test_y), axis=1))
+          # for multi-head regression, i.e., Y is one-hot incoded
+          testy_label    = np.array(jnp.argmax(jnp.abs(test_y), axis=1))
           predicty_label = np.array(jnp.argmax(jnp.abs(predict_y), axis=1))
           #predicty_prob = softmax(np.array(predict_y), axis=1)
           if predicty_prob is None:
             predicty_prob = normalize(np.array(jnp.abs(predict_y)), axis=1)
         else:
+          # for binary classfication where Y is {-1, 1}
           testy_label = copy.copy(test_y)
           idx = np.where(testy_label==-1)[0]
           testy_label[idx] = 0
@@ -199,6 +229,7 @@ class KernelMethod(BaseEstimator):
             predicty_prob = predict_y
       
       else:
+          # for binary classfication where Y is {-1, 1}
           idx1 = np.where(predict_y>=thres)[0]
 
           testy_label = copy.copy(test_y)

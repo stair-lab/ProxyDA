@@ -44,16 +44,16 @@ class ConditionalMeanEmbed:
                kernel_dict=None):
     """ initiate the parameters
       Args:
-        Y: dependent variables, ndarray shape=(n1_samples, n2_features)
-        X: independent varaibles, 
+        y: dependent variables, ndarray shape=(n1_samples, n2_features)
+        x: independent varaibles, 
         dict {"Xi": ndarray shape=(n1_samples, n1_features)}
         lam: regularization parameter
         scale: kernel length scale
         method: approximation method, "orginal" for linear solver
-        kernel_dict: Dictionary of kernel_function, 
-        dictionary keys are the variable name
         lam_min: minimum of lambda (log space) for hyperparameter tuning, float
         lam_min: maximum of lambda (log space) for hyperparameter tuning, float
+        kernel_dict: Dictionary of kernel_function, 
+        dictionary keys are the variable name
     """
     self.n_samples = y.shape[0]
     self.x_list = list(x.keys())
@@ -104,12 +104,12 @@ class ConditionalMeanEmbed:
     """
     gx = self.ker_xx + self.lam*self.n_samples*jnp.eye(self.n_samples)
 
-    out_dict = {"GramX": gx,
-                "Y":self.y,
-                "X":self.x,
-                "Xlist":self.x_list,
-                "scale":self.sc,
-                "kernel_dict":self.kernel_dict}
+    out_dict = {"GramX":       gx,
+                "Y":           self.y,
+                "X":           self.x,
+                "Xlist":       self.x_list,
+                "scale":       self.sc,
+                "kernel_dict": self.kernel_dict}
     return out_dict
 
   def get_mean_embed(self, new_x):
@@ -156,7 +156,7 @@ class ConditionalMeanEmbed:
         out: ndarray shape=(n3_samples, n2_samples)
     """
     memb_nx = self.get_mean_embed(new_x)
-    gamma = memb_nx["Gamma"]
+    gamma   = memb_nx["Gamma"]
     phi_yny = ker_mat(jnp.array(new_y), jnp.array(self.y),
                       kernel=self.kernel_dict["Y"],
                       scale=self.sc)

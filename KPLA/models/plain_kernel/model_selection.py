@@ -17,6 +17,51 @@ from KPLA.models.plain_kernel.adaptation import FullAdapt
 from KPLA.models.plain_kernel.multienv_adaptation import MultiEnvAdapt
 
 
+
+def cv_evaluation(valdata_y, predict_y, task, thre):
+  """ evaluation on cross validation
+  Args:
+    validata_y: true Y, jax.numpy.array or numpy.darray
+    predict_y:  prediected Y, jax.numpy.array or numpy.darray
+    task:       "r" for regression task, "c" for classification task, str
+    thre:       threshold, float
+  """
+  try:
+    #try:
+    if task == "r":
+      mse_err = mean_squared_error(np.array(valdata_y),
+                                  np.array(predict_y))
+      return mse_err
+
+    elif task == "c":
+      if len(valdata_y.shape)>=2:
+        # classification where Y is one-hot encoded
+        testy_label    = np.array(jnp.argmax(jnp.abs(valdata_y), axis=1))
+        predicty_prob  = normalize(np.array(jnp.abs(predict_y)), axis=1)
+        predicty_label = np.array(jnp.argmax(jnp.abs(predict_y), axis=1))
+        aocroc_err = roc_auc_score(testy_label, predicty_prob[:,-1])
+        return aocroc_err 
+      else:
+        # Y is either -1 or 1. 
+        testy_label=copy.copy(valdata_y)
+        
+        #correct -1 to 0
+        #print(np.unique(testy_label))
+        idx = np.where(testy_label == -1)[0]
+
+        testy_label[idx] = 0.
+
+        idx1 = np.where(predict_y>=thre)[0]
+        predicty_label = np.zeros(predict_y.shape[0], dtype=np.int8)
+        predicty_label[idx1] = 1 
+        
+        acc_err = accuracy_score(testy_label, predicty_label)
+        return acc_err
+  except ValueError as caught_err:
+    print("caught error on param selection")
+    pass
+  return 0
+
 def tune_adapt_model_cv(source_train:  dict,
                         target_train: dict,
                         source_test:  dict,
@@ -24,25 +69,52 @@ def tune_adapt_model_cv(source_train:  dict,
                         method_set: dict,
                         kernel_dict: dict,
                         model, #function class object
-                        task="c",
-                        fit_task = "r",
+                        use_validation = False,
+                        val_data=None,
+                        task="r", #for evaluation
+                        fit_task = "r", #for training
                         n_params=5,
                         n_fold=5,
                         min_log=-4,
                         max_log=4,
-                        thre = 0.):
+                        thre = 0. #prediction threshold for regression task
+                        ):
+  """ model selection for adaptation with concepts and proxies
+  Args:
+    source_train:   training data of source domain, dict
+    target_train:   training data of target domain, dict
+    source_test:    testing  data of source domain, dict
+    target_test:    testing  data of target domain, dict
+    method_set:     methods for optimization, dict
+    kernel_dict:    selections of kernel, dict
+    model:          estimator, object class
+    use_validation: use held-out validation data, Boolean
+    val_set:        validation data if use_validation set True, dict
+    task:           evaluation method: 
+                    "c" for classification;
+                    "r" for regression, str
+    fit_task:       method when fitting model:
+                    "c" for classification;
+                    "r" for regression, str                
+    n_params:       number of parameters for searching, int
+    n_fold:         number of folds for cross-validation, int
+    min_log:        minimum value of the search log-scale, float
+    max_log:        maximum value of the search log-scale, float
+    thre:           threshold for classification task, float 
+  """
 
+      
+        
   best_estimator = None
   best_err = np.inf if task=="r" else -np.inf
 
   params = product(np.logspace(min_log, max_log, n_params).tolist(), #alpha
-                    np.logspace(min_log, max_log, n_params).tolist(), #alpha2
-                    np.logspace(min_log, max_log, n_params).tolist()) #scale
+                   np.logspace(min_log, max_log, n_params).tolist(), #alpha2
+                   np.logspace(min_log, max_log, n_params).tolist()) #scale
 
   best_params = {}
 
   for param, (alpha, alpha2, scale) in enumerate(params):
-    kf = KFold(n_splits=n_fold, random_state=None, shuffle=False)
     lam_set = {"cme": alpha,
                "m0": alpha2,
                "h0": alpha2,
@@ -51,16 +123,10 @@ def tune_adapt_model_cv(source_train:  dict,
     errs = []
     best_err_i = np.inf if task=="r" else -np.inf
     best_model_i = None
-
-    for i, (train_idx, test_idx) in enumerate(kf.split(source_train["X"])):
-      print(f"({alpha}, {alpha2}, {scale}), Param {param} Fold {i}:")
-
-      source_train_cv_train = {k: v[train_idx] for k, v in source_train.items()}
-      source_train_cv_val   = {k: v[test_idx]  for k, v in source_train.items()}
-
-      split = False
-
-      estimator = model(source_train_cv_train,
+    split = False
+    if use_validation:
+      #ude held out validation set
+      estimator = model(source_train,
                         target_train,
                         source_test,
                         target_test,
@@ -70,35 +136,55 @@ def tune_adapt_model_cv(source_train:  dict,
                         method_set,
                         kernel_dict,
                         thre)
-
-      estimator.fit(fit_task)
-      ##select parameters from source
-      predict_y = estimator.predict({"X": source_train_cv_val["X"]},
+      estimator.fit(task=fit_task)
+      # select parameters from source
+      predict_y = estimator.predict({"X": val_data["X"]},
                                       "source", 
                                       "source")
+      error = cv_evaluation(val_data["Y"], predict_y, task, thre)
+      errs.append(error)
+      best_model_i = estimator
       
-      try:
-        if task == "r":
-          acc_err = mean_squared_error(np.array(source_train_cv_val["Y"]),
-                                      np.array(predict_y))
+    else: 
+      kf = KFold(n_splits=n_fold, random_state=None, shuffle=False)
 
-        elif task == "c":
-          testy_label = np.array(jnp.argmax(source_train_cv_val["Y"], axis=1))
-          predicty_prob = normalize(np.array(predict_y), axis=1)
+      #use cross validation method
+      for i, (train_idx, test_idx) in enumerate(kf.split(source_train["X"])):
+        print(f"({alpha}, {alpha2}, {scale}), Param {param} Fold {i}:")
 
-          acc_err = roc_auc_score(testy_label, predicty_prob[:,1])
-      except ValueError as caught_err:
-        print(f"Caught {caught_err} on param {param} fold {i}")
-        continue
+        source_train_cv_train = {k: v[train_idx] for k, v in source_train.items()}
+        source_train_cv_val   = {k: v[test_idx]  for k, v in source_train.items()}
 
-      errs.append(acc_err/len(source_train_cv_val))
-      ## select parameters from target
-      improve_r = (acc_err < best_err_i) and task == "r"
-      improve_c = (acc_err > best_err_i) and task == "c"
-      if improve_r or improve_c:
-        best_err_i = acc_err
-        best_model_i = estimator
+        
 
+        estimator = model(source_train_cv_train,
+                          target_train,
+                          source_test,
+                          target_test,
+                          split,
+                          scale,
+                          lam_set,
+                          method_set,
+                          kernel_dict,
+                          thre)
+
+        estimator.fit(task=fit_task)
+        ##select parameters from source
+        predict_y = estimator.predict({"X": source_train_cv_val["X"]},
+                                        "source", 
+                                        "source")
+        error = cv_evaluation(source_train_cv_val["Y"], predict_y, task, thre)
+
+
+        errs.append(error/len(source_train_cv_val))
+        ## select parameters from target
+        improve_r = (error < best_err_i) and task == "r" #decrease mse
+        improve_c = (error > best_err_i) and task == "c" #improve accuracy or aucroc
+        if improve_r or improve_c:
+          best_err_i = error
+          best_model_i = estimator
+
+    #model selection of the parameter
     if len(errs) == 0:
       continue
     improve_r = (np.mean(errs) < best_err) and task == "r"
@@ -115,157 +201,6 @@ def tune_adapt_model_cv(source_train:  dict,
   return best_estimator, best_params
 
 
-
-def tune_adapt_model(source_train: dict,
-                     target_train: dict,
-                     source_test: dict,
-                     target_test: dict,
-                     source_val:   dict,
-                     method_set:   dict,
-                     kernel_dict:   dict,
-                     task="r",
-                     n_params=5,
-                     min_log=-4,
-                     max_log=4,
-                     ):
-
-  best_estimator = None
-  best_err = np.inf if task=="r" else -np.inf
-
-  params = product(np.logspace(min_log, max_log, n_params).tolist(), #alpha
-                    np.logspace(min_log, max_log, n_params).tolist()) #scale
-
-  best_params = {}
-
-  for alpha, scale in params:
-    lam_set = {"cme": alpha,
-               "m0": alpha,
-               "h0": alpha,
-               "lam_min":-4,
-               "lam_max":0}
-
-
-
-    print(f"({alpha}, {scale}):")
-
-    split = False
-
-    estimator = FullAdapt(source_train,
-                          target_train,
-                          source_test,
-                          target_test,
-                          split,
-                          scale,
-                          lam_set,
-                          method_set,
-                          kernel_dict)
-    estimator.fit(task)
-    ##select parameters from source
-    predict_y = estimator.predict({"X": source_val["X"]},
-                                  "source", 
-                                  "source")
-    if task == "r":
-      acc_err = mean_squared_error(np.array(source_val["Y"]),
-                                   np.array(predict_y))
-
-    elif task == "c":
-      testy_label = np.array(jnp.argmax(jnp.abs(source_val["Y"]), axis=1))
-      predicty_prob = normalize(np.array(jnp.abs(predict_y)), axis=1)
-
-      acc_err = roc_auc_score(testy_label, predicty_prob[:,1])
-
-    improve_r = (acc_err < best_err) and task == "r"
-    improve_c = (acc_err > best_err) and task == "c"
-
-    if improve_r or improve_c:
-      best_err = acc_err
-      best_estimator = estimator
-      best_params = {"alpha":alpha, "scale":scale}
-
-      print(f"update best parameters alpha: {alpha}, \
-            scale: {scale}, err: {acc_err}\n")
-
-  return best_estimator, best_params
-
-
-def tune_multienv_adapt_model(source_train_list: list,
-                              target_train_list: list,
-                              source_test_list:  list,
-                              target_test_list:  list,
-                              source_val_list:   list,
-                              method_set:        dict,
-                              kernel_dict:       dict,
-                              models = MultiEnvAdapt,
-                              task="r",
-                              n_params=5,
-                              min_log=-4,
-                              max_log=4,
-                            ):
-
-  best_estimator = None
-  best_err = np.inf if task=="r" else -np.inf
-
-  params = product(np.logspace(min_log, max_log, n_params).tolist(), #alpha
-                    np.logspace(min_log, max_log, n_params).tolist()) #scale
-
-  best_params = {}
-
-  for alpha, scale in params:
-    lam_set = {"cme": alpha,
-               "m0": alpha,
-               "h0": alpha,
-               "lam_min":-4,
-               "lam_max":0}
-
-
-    print(f"({alpha}, {scale}):")
-
-    split = False
-
-    estimator = models(source_train_list,
-                      target_train_list,
-                      source_test_list,
-                      target_test_list,
-                      split,
-                      scale,
-                      lam_set,
-                      method_set,
-                      kernel_dict)
-
-    estimator.fit(task)
-    ##select parameters from source
-    acc_err = 0
-    for source_val in source_val_list:
-      predict_y = estimator.predict({"X": source_val["X"]},
-                                  "source", 
-                                  "source")
-
-      if task == "r":
-        acc_err += mean_squared_error(np.array(source_val["Y"]),
-                                      np.array(predict_y))
-
-      elif task == "c":
-        testy_label = np.array(jnp.argmax(jnp.abs(source_val["Y"]), axis=1))
-        predicty_prob = normalize(np.array(jnp.abs(predict_y)), axis=1)
-
-        acc_err += roc_auc_score(testy_label, predicty_prob[:,1])
-
-    improve_r = (acc_err < best_err) and task == "r"
-    improve_c = (acc_err > best_err) and task == "c"
-
-    if improve_r or improve_c:
-
-      best_err = acc_err
-      best_estimator = estimator
-      best_params = {"alpha":alpha, "scale":scale}
-
-      print(f"update best parameters alpha: {alpha}, \
-            scale: {scale}, err: {acc_err}\n")
-
-  return best_estimator, best_params
-
-
-
 def tune_multienv_adapt_model_cv(source_train_list:  dict,
                                 target_train_list: dict,
                                 source_test_list:  dict,
@@ -273,16 +208,45 @@ def tune_multienv_adapt_model_cv(source_train_list:  dict,
                                 method_set: dict,
                                 kernel_dict: dict,
                                 model, #function class object
-                                task="c",
+                                use_validation = False,
+                                val_list=None,
+                                task="r", #for evaluation
+                                fit_task = "r", #for training
                                 n_params=5,
                                 n_fold=5,
                                 min_log=-4,
                                 max_log=4,
+                                thre=0, #threshold for classification
                                 fix_scale=False):
+  """ model selection for multi-env adaptation 
+  Args:
+    source_train_list:   training data of source domain, [dict]
+    target_train_list:   training data of target domain, [dict]
+    source_test_list:    testing  data of source domain, [dict]
+    target_test_list:    testing  data of target domain, [dict]
+    method_set:     methods for optimization, dict
+    kernel_dict:    selections of kernel, dict
+    model:          estimator, object class
+    use_validation: use held-out validation data, Boolean
+    val_list:        validation data if use_validation set True, dict
+    task:           evaluation method: 
+                    "c" for classification;
+                    "r" for regression, str
+    fit_task:       method when fitting model:
+                    "c" for classification;
+                    "r" for regression, str                
+    n_params:       number of parameters for searching, int
+    n_fold:         number of folds for cross-validation, int
+    min_log:        minimum value of the search log-scale, float
+    max_log:        maximum value of the search log-scale, float
+    thre:           threshold for classification task, float 
+    fix_scale:      not tuning the scaling parameter, Boolean 
+  """
 
   best_estimator = None
   best_err = np.inf if task=="r" else -np.inf
   if fix_scale:
+    #do not tune the 
     params = product(np.logspace(min_log, max_log, n_params).tolist(), #alpha
                     np.logspace(min_log, max_log, n_params).tolist(), #alpha2
                     [1.]) #scale
@@ -295,7 +259,7 @@ def tune_multienv_adapt_model_cv(source_train_list:  dict,
 
   #print(f"{len(params)} parameter combinations w/ {n_fold} folds.")
 
-  for param, (alpha, alpha2, scale) in enumerate(params):
+  for _, (alpha, alpha2, scale) in enumerate(params):
     kf = KFold(n_splits=n_fold, random_state=None, shuffle=False)
     lam_set = {"cme": alpha,
                "m0": alpha2,
@@ -305,59 +269,66 @@ def tune_multienv_adapt_model_cv(source_train_list:  dict,
     errs = []
     best_err_i = np.inf if task=="r" else -np.inf
     best_model_i = None
-
-    split_idx = kf.split(source_train_list[0]["X"])
-    for i, (train_idx, test_idx) in enumerate(split_idx):
-      print(f"({alpha}, {alpha2}, {scale}), Fold {i}:")
-
-      def parse_by_id(par_idx, train_list):
-        return [{k: v[par_idx] for k, v in st.items()} for st in train_list]
-      source_train_cv_train = parse_by_id(train_idx, source_train_list)
-      source_train_cv_val   = parse_by_id(test_idx, source_train_list)
-
-      split = False
-
+    split = False
+    if use_validation:
       estimator = model(source_train_cv_train,
-                        target_train_list,
-                        source_test_list,
-                        target_test_list,
-                        split,
-                        scale,
-                        lam_set,
-                        method_set,
-                        kernel_dict)
+                  target_train_list,
+                  source_test_list,
+                  target_test_list,
+                  split,
+                  scale,
+                  lam_set,
+                  method_set,
+                  kernel_dict)
+      estimator.fit(task=fit_task)
+      error = 0
+      for idx, val in enumerate(val_list):
+          predict_y = estimator.predict({"X": val["X"]},
+                                        "source", 
+                                        "source", idx)
+          error += cv_evaluation(val["Y"], predict_y, task, thre)
+      errs.append(error/len(val_list))
+      best_model_i = estimator
 
-      estimator.fit(task=task)
-      acc_err = 0
-      ##select parameters from source
-      for idx, source_val in enumerate(source_train_cv_val):
-        predict_y = estimator.predict({"X": source_val["X"]},
-                                    "source", 
-                                    "source", idx)
-        #predict_y = estimator.predict({"X": source_val["X"], 
-        #                               "Z": source_val["Z"]},
-        #                            "source", 
-        #                            "source", idx)
-        try:
-          if task == "r":
-            acc_err = mean_squared_error(np.array(source_val["Y"]),
-                                        np.array(predict_y))
+    else:
+      split_idx = kf.split(source_train_list[0]["X"])
+      for i, (train_idx, test_idx) in enumerate(split_idx):
+        print(f"({alpha}, {alpha2}, {scale}), Fold {i}:")
 
-          elif task == "c":
-            testy_label = np.array(jnp.argmax(source_val["Y"], axis=1))
-            predicty_prob = normalize(np.array(predict_y), axis=1)
+        def parse_by_id(par_idx, train_list):
+          return [{k: v[par_idx] for k, v in st.items()} for st in train_list]
+        source_train_cv_train = parse_by_id(train_idx, source_train_list)
+        source_train_cv_val   = parse_by_id(test_idx, source_train_list)
 
-            acc_err = roc_auc_score(testy_label, predicty_prob[:,1])
-        except ValueError as caught_err:
-          print(f"Caught {caught_err} on param {param} fold {i}")
-          continue
-      errs.append(acc_err/len(source_train_cv_val))
-      ## select parameters from target
-      improve_r = (acc_err < best_err_i) and task == "r"
-      improve_c = (acc_err > best_err_i) and task == "c"
-      if improve_r or improve_c:
-        best_err_i = acc_err
-        best_model_i = estimator
+        
+
+        estimator = model(source_train_cv_train,
+                          target_train_list,
+                          source_test_list,
+                          target_test_list,
+                          split,
+                          scale,
+                          lam_set,
+                          method_set,
+                          kernel_dict)
+
+        estimator.fit(task=fit_task)
+        
+        ##select parameters from source
+        error = 0
+        for idx, source_val in enumerate(source_train_cv_val):
+          predict_y = estimator.predict({"X": source_val["X"]},
+                                      "source", 
+                                      "source", idx)
+          error += cv_evaluation(source_val['Y'], predict_y, task, thre)
+
+        errs.append(error/len(source_train_cv_val))
+        ## select parameters from target
+        improve_r = (error < best_err_i) and task == "r"
+        improve_c = (error > best_err_i) and task == "c"
+        if improve_r or improve_c:
+          best_err_i = error
+          best_model_i = estimator
 
     improve_r = (np.mean(errs) < best_err) and task == "r"
     improve_c = (np.mean(errs) > best_err) and task == "c"

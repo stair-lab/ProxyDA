@@ -512,12 +512,15 @@ def tidy_w(data_dict, w_value):
     result[key]['w_one_hot'] = result[key][f'w_{w_value}_one_hot']
   return result
 
-def from_Z_to_U(z_indicator):
-  pu_lookup = {0:0.1, 1:0.2, 2:0.3, 3:0.4, 4:0.5,
-               5:0.6, 6:0.7, 7:0.8, 8:0.9} #index 3 is for the target domain
-
-  pu_lookup = {0:0.1, 1:0.2, 2:0.3, 3:0.4, 4:0.9} #index 3 is for the target domain 
-  #pu_lookup = {0:0.8, 1:0.7, 2:0.6, 3:0.5, 4:0.9}
+def from_Z_to_U(z_indicator, pu_lookup=None):
+  if pu_lookup is None:
+    pu_lookup = {0:0.1, 1:0.2, 2:0.3, 3:0.4, 4:0.5,
+                5:0.6, 6:0.7, 7:0.8, 8:0.9} #index 3 is for the target domain
+    #index 4 is for the target domain
+    #pu_lookup = {0:0.1, 1:0.2, 2:0.3, 3:0.4, 4:0.9} # task1  
+    #pu_lookup = {0:0.4, 1:0.5, 2:0.6, 3:0.4, 4:0.9} # task2  
+    #pu_lookup = {0:0.7, 1:0.8, 2:0.9, 3:0.4, 4:0.4} # task3  
+    #pu_lookup = {0:0.8, 1:0.7, 2:0.6, 3:0.5, 4:0.9}
   return pu_lookup[z_indicator], len(pu_lookup)
   
 

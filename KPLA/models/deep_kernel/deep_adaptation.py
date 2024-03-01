@@ -60,27 +60,27 @@ class DeepKernelMethod:
     self.w_dim = self.model.w_dim
     self.fitted = True
 
-  def score(self, testy, predicty):
+  def score(self, testy, predict_y):
     """l2 error of the prediciton.
     Args:
         testy: true Y, torch.Tensor
-        predicty: predict Y, torch.Tensor
+        predict_y: predict Y, torch.Tensor
     """
     ## Fix shape
     err_message = "unresolveable shape mismatch between test_y and predict_y"
 
-    if testy.shape > predicty.shape:
-      if not testy.ndim == predicty.ndim + 1:
-        if not testy.shape[:-1] == predicty.shape:
+    if testy.shape > predict_y.shape:
+      if not testy.ndim == predict_y.ndim + 1:
+        if not testy.shape[:-1] == predict_y.shape:
           raise AssertionError(err_message)
-      predicty = predicty.reshape(testy.shape)
-    elif testy.shape < predicty.shape:
-      if not testy.ndim + 1 == predicty.ndim:
-        if not testy.shape == predicty.shape[:-1]:
+      predict_y = predict_y.reshape(testy.shape)
+    elif testy.shape < predict_y.shape:
+      if not testy.ndim + 1 == predict_y.ndim:
+        if not testy.shape == predict_y.shape[:-1]:
           raise AssertionError(err_message)
 
-      testy = testy.reshape(predicty.shape)
-    l2_error =  torch.sum((testy-predicty)**2)/predicty.shape[0]
+      testy = testy.reshape(predict_y.shape)
+    l2_error =  torch.sum((testy-predict_y)**2)/predict_y.shape[0]
     return l2_error
 
 

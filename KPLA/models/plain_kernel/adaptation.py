@@ -13,7 +13,6 @@ from KPLA.models.plain_kernel.cme import ConditionalMeanEmbed
 from KPLA.models.plain_kernel.bridge_h0 import BridgeH0, BridgeH0CLF
 from KPLA.models.plain_kernel.kernel_utils import flatten
 
-from sklearn.calibration import CalibratedClassifierCV
 
 class FullAdapt(KernelMethod):
   """
@@ -162,13 +161,35 @@ class FullAdapt(KernelMethod):
 
     return estimator
 
-  def calibrate_classifier(self, calib_x, calib_y):
-    calibrated_clf = CalibratedClassifierCV(self, cv="prefit")
-    calibrated_clf.fit(calib_x, calib_y)
-    self.calibrated_clf = calibrated_clf
-    self.calib_ = True
+  def _fit_target_domain(self, domain_data, task):
 
-  
+    covars = {}
+    covars['X'] = jnp.array(domain_data['X'])
+
+    if len(domain_data['W'].shape)>1:
+      w = domain_data['W']
+    else:
+      w = domain_data['W'][:, jnp.newaxis]
+
+    if len(domain_data['C'].shape)>1:
+      c = domain_data['C']
+    else:
+      c = domain_data['C'][:, jnp.newaxis]
+    wc = jnp.hstack((w, c))
+
+
+    cme_wc_x = ConditionalMeanEmbed(y=wc,
+                                    x=covars,
+                                    lam=self.lam_set['cme'],
+                                    kernel_dict=self.kernel_dict['cme_wc_x'],
+                                    scale=self.sc,
+                                    method=self.method_set['cme'],
+                                    lam_min=self.lam_set['lam_min'],
+                                    lam_max=self.lam_set['lam_max'])    
+
+    estimator = {}
+    estimator['cme_w_x']  = cme_wc_x
+    return estimator
 
   def predict_proba(self, X):
     """predict probability.
@@ -186,150 +207,31 @@ class FullAdapt(KernelMethod):
 
     return predict_y_prob
 
-  def calibrated_evaluation(self, source_clf, target_clf, plot=False):
-    """ calibrate probability for evaluation
+
+
+  def evaluation(self, task='r', source_data=None, target_data=None, plot=False):
+    """evaluation on data
     Args:
-      source_clf: source classifier
-      target_clf: target classifier
-      plot: plot figure or not, Boolean
+      task: 'r' for regression, return MSE, 'c' for classification, return AUCROC, ACC
+      source_data: data dict, if None, evaluate the saved data
+      target_data: data dict, if None, evaluate the saved data
+      plot: plot the results, default False
     """
-    eval_list = []
-    task = 'c'
-
-    #source evaluation
-    source_testx = {}
-    source_testx['X'] = self.source_test['X']
-    source_testy = self.source_test['Y']
-
-    #source on source error
-    predict_y = self.predict(source_testx, 'source', 'source')
-    predict_y = source_clf.predict_proba(predict_y)
-    ss_error = self.score(predict_y, source_testy, task)
-    eval_list.append(flatten({'task': 'source-source',
-                              'predict error': ss_error}))
-
-    if plot:
-      testy_label = np.array(jnp.argmax(source_testy, axis=1))
-      plt.figure()
-      true_0 = np.where(testy_label==0)
-      true_1 = np.where(testy_label==1)
-
-      plt.hist(predict_y[true_0,0])
-      plt.hist(predict_y[true_1,0])
-
-      plt.hist(predict_y[true_0,1])
-      plt.hist(predict_y[true_1,1])
-      plt.savefig('ss.png')
-
-
-    # target on source error
-    predict_y = self.predict(source_testx, 'target', 'target')
-    predict_y = target_clf.predict_proba(predict_y)
-    ts_error = self.score(predict_y, source_testy, task)
-    eval_list.append(flatten({'task': 'target-source',
-                              'predict error': ts_error}))
-    if plot:
-      plt.figure()
-      true_0 = np.where(testy_label==0)
-      true_1 = np.where(testy_label==1)
-
-      plt.hist(predict_y[true_0,0])
-      plt.hist(predict_y[true_1,0])
-
-      plt.hist(predict_y[true_0,1])
-      plt.hist(predict_y[true_1,1])
-      plt.savefig('ts.png')
-
-    #target evaluation
-    target_testx = {}
-    target_testx['X'] = self.target_test['X']
-    target_testy = self.target_test['Y']
-
-    # target on target errror
-    predict_y = self.predict(target_testx, 'target', 'target')
-    predict_y = target_clf.predict_proba(predict_y)
-
-    tt_error = self.score(predict_y, target_testy, task)
-    eval_list.append(flatten({'task': 'target-target',
-                              'predict error': tt_error}))
-
-    if plot:
-      testy_label = np.array(jnp.argmax(target_testy, axis=1))
-
-      plt.figure()
-      true_0 = np.where(testy_label==0)
-      true_1 = np.where(testy_label==1)
-
-      plt.hist(predict_y[true_0,0])
-      plt.hist(predict_y[true_1,0])
-
-      plt.hist(predict_y[true_0,1])
-      plt.hist(predict_y[true_1,1])
-      plt.savefig('tt.png')
-
-
-    # source on target error
-    predict_y = self.predict(target_testx, 'source', 'source')
-    predict_y = source_clf.predict_proba(predict_y)
-
-    st_error = self.score(predict_y,  target_testy, task)
-    eval_list.append(flatten({'task': 'source-target',
-                              'predict error': st_error}))
-
-    if plot:
-      plt.figure()
-      true_0 = np.where(testy_label==0)
-      true_1 = np.where(testy_label==1)
-
-      plt.hist(predict_y[true_0,0])
-      plt.hist(predict_y[true_1,0])
-
-      plt.hist(predict_y[true_0,1])
-      plt.hist(predict_y[true_1,1])
-      plt.savefig('st.png')
-
-    #adaptation error
-    predict_y = self.predict(target_testx, 'source', 'target')
-    predict_y = source_clf.predict_proba(predict_y)
-
-    adapt_error = self.score(predict_y,  target_testy, task)
-    eval_list.append(flatten({'task': 'adaptation',
-                              'predict error': adapt_error}))
-
-    if plot:
-      plt.figure()
-      true_0 = np.where(testy_label==0)
-      true_1 = np.where(testy_label==1)
-
-      plt.hist(predict_y[true_0,0])
-      plt.hist(predict_y[true_1,0])
-
-      plt.hist(predict_y[true_0,1])
-      plt.hist(predict_y[true_1,1])
-      plt.savefig('adapt.png')
-
-    df = pd.DataFrame(eval_list)
-    print(df)
-
-    return df
-
-  def evaluation(self, task='r', plot=False, calib=False):
     eval_list = []
     print('start evaluation')
     #source evaluation
     source_testx = {}
-    source_testx['X'] = self.source_test['X']
-    source_testy = self.source_test['Y']
+    if source_data is not None:
+      source_testx['X'] = source_data['X']
+      source_testy      = source_data['Y']
+    else:
+      source_testx['X'] = self.source_test['X']
+      source_testy      = self.source_test['Y']
 
     #source on source error
     predict_y = self.predict(source_testx, 'source', 'source')
-    if calib:
-      self.cme_domain = 'source'
-      self.h_domain = 'source'
-      prediecty_proba = self.calibrated_clf.predict_proba(source_testx)
-    else:
-      prediecty_proba = None
-    ss_error = self.score(predict_y, source_testy, task, prediecty_proba, thres=self.thre)
+
+    ss_error = self.score(predict_y, source_testy, task, thres=self.thre)
     eval_list.append(flatten({'task': 'source-source',
                               'predict error': ss_error}))
 
@@ -347,16 +249,10 @@ class FullAdapt(KernelMethod):
       plt.savefig('ss.png')
 
 
-    # target on source error
-    if calib:
-      self.cme_domain = 'target'
-      self.h_domain = 'target'
-      prediecty_proba = self.calibrated_clf.predict_proba(source_testx)
-    else:
-      prediecty_proba = None
+
 
     predict_y = self.predict(source_testx, 'target', 'target')
-    ts_error = self.score(predict_y, source_testy, task, prediecty_proba, thres=self.thre)
+    ts_error = self.score(predict_y, source_testy, task, thres=self.thre)
     eval_list.append(flatten({'task': 'target-source',
                               'predict error': ts_error}))
     if plot:
@@ -373,19 +269,16 @@ class FullAdapt(KernelMethod):
 
     #target evaluation
     target_testx = {}
-    target_testx['X'] = self.target_test['X']
-    target_testy = self.target_test['Y']
+    if target_data is not None:
+      target_testx['X'] = target_data['X']
+      target_testy      = target_data['Y']
+    else:
+      target_testx['X'] = self.target_test['X']
+      target_testy      = self.target_test['Y']
 
     # target on target errror
-
-    if calib:
-      self.cme_domain = 'target'
-      self.h_domain = 'target'
-      prediecty_proba = self.calibrated_clf.predict_proba(target_testx)
-    else:
-      prediecty_proba = None
     predict_y = self.predict(target_testx, 'target', 'target')
-    tt_error = self.score(predict_y, target_testy, task, prediecty_proba, thres=self.thre)
+    tt_error  = self.score(predict_y, target_testy, task, thres=self.thre)
     eval_list.append(flatten({'task': 'target-target',
                               'predict error': tt_error}))
 
@@ -406,14 +299,9 @@ class FullAdapt(KernelMethod):
 
     # source on target error
 
-    if calib:
-      self.cme_domain = 'source'
-      self.h_domain = 'source'
-      prediecty_proba = self.calibrated_clf.predict_proba(target_testx)
-    else:
-      prediecty_proba = None
+
     predict_y = self.predict(target_testx, 'source', 'source')
-    st_error = self.score(predict_y,  target_testy, task, prediecty_proba, thres=self.thre)
+    st_error = self.score(predict_y,  target_testy, task, thres=self.thre)
     eval_list.append(flatten({'task': 'source-target',
                               'predict error': st_error}))
 
@@ -429,15 +317,9 @@ class FullAdapt(KernelMethod):
       plt.hist(predict_y[true_1,1])
       plt.savefig('st.png')
 
-    #adaptation error
-    if calib:
-      self.cme_domain = 'target'
-      self.h_domain = 'source'
-      prediecty_proba = self.calibrated_clf.predict_proba(target_testx)
-    else:
-      prediecty_proba = None
+
     predict_y = self.predict(target_testx, 'source', 'target')
-    adapt_error = self.score(predict_y,  target_testy, task, prediecty_proba, thres=self.thre)
+    adapt_error = self.score(predict_y,  target_testy, task, thres=self.thre)
     eval_list.append(flatten({'task': 'adaptation',
                               'predict error': adapt_error}))
 

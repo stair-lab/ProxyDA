@@ -42,16 +42,17 @@ class MultiKernelMethod(KernelMethod):
                target_train,
                source_test,
                target_test,
-               split, scale=1,
+               split, 
+               scale=1,
                lam_set = None,
                method_set = None,
                kernel_dict=None):
     """ Initiate parameters
     Args:
-        source_train: dictionary, keys: C,W,X,Y
-        target_train: dictionary, keys: C, W, X, Y
-        source_test:  dictionary, keys: X, Y
-        target_test:  dictionary, keys: X, Y
+        source_train: dict, keys: C,W,X,Y
+        target_train: dict, keys: C, W, X, Y
+        source_test:  dict, keys: X, Y
+        target_test:  dict, keys: X, Y
         split: Boolean, split the training dataset or not. 
         If True, the samples are evenly split into groups. 
         Hence, each estimator receive smaller number of training samples.  
@@ -104,21 +105,21 @@ class MultiKernelMethod(KernelMethod):
         cat_source_train = concatenate_data(self.source_train[i],
                                             cat_source_train)
       self.source_train = [cat_source_train, self.source_train]
-      #first train cme(w|c,x), h0 with data pulled across environments,
+      # first train cme(w|c,x), h0 with data pulled across environments,
       # then the second item train the cme(w|x)
-      #  sepcifically for each environment
+      # sepcifically for each environment
       self.target_train = [self.target_train[0], self.target_train]
-      #first train cme(w|c,x), h0 with data, then the second
+      # first train cme(w|c,x), h0 with data, then the second
       # item train the cme(w|x) sepcifically for each environment
 
     # learn estimators from the source domain
     print('fit source domains')
-    self.source_estimator =  self._fit_source_domains(self.source_train, task)
+    self.source_estimator =  self._fit_one_domain(self.source_train, task)
 
     # learn estimators from the target domain
     print('fit target domains')
     if train_target:
-      self.target_estimator =  self._fit_source_domains(self.target_train, task)
+      self.target_estimator =  self._fit_one_domain(self.target_train, task)
 
     else:
       self.target_estimator = self._fit_target_domain(self.target_train)
@@ -136,58 +137,65 @@ class MultiKernelMethod(KernelMethod):
 
     cme_w_x = ConditionalMeanEmbed(jnp.array(domain_data['W']),
                                    covars,
-                                   self.lam_set['cme'],
-                                   kernel_dict=self.kernel_dict['cme_w_x'],
-                                   scale=self.sc,
-                                   method=self.method_set['cme'],
-                                   lam_min=self.lam_set['lam_min'],
-                                   lam_max=self.lam_set['lam_max'])
+                                   lam        = self.lam_set['cme'],
+                                   kernel_dict= self.kernel_dict['cme_w_x'],
+                                   scale      = self.sc,
+                                   method     = self.method_set['cme'],
+                                   lam_min    = self.lam_set['lam_min'],
+                                   lam_max    = self.lam_set['lam_max'])
 
     estimator['cme_w_x']  = cme_w_x
     return estimator
 
-  def evaluation(self, task='r'):
+  def evaluation(self, task='r', source_data=None, target_data = None):
     eval_list = []
-    n_env = len(self.source_test)
+    n_env     = len(self.source_test)
 
-    target_testx = {}
-    target_testx['X'] = self.target_test[0]['X']
-    target_testy = self.target_test[0]['Y']
+    target_testx      = {}
+    if target_data is not None:
+      target_testx['X'] = target_data[0]['X']
+      target_testy      = target_data[0]['Y']
+    else:
+      target_testx['X'] = self.target_test[0]['X']
+      target_testy      = self.target_test[0]['Y']
 
     for i in range(n_env):
-      source_testx = {}
-      source_testx['X'] = self.source_test[i]['X']
-      #source_testx['Z'] = self.source_test[i]['Z']
-      #target_testx['Z'] = self.source_test[i]['Z']
-      source_testy = self.source_test[i]['Y']
+      source_testx      = {}
+
+      if source_data is not None:
+        source_testx['X'] = source_data[i]['X']
+        source_testy      = source_data[i]['Y']
+      else:
+        source_testx['X'] = self.source_test[i]['X']
+        source_testy      = self.source_test[i]['Y']
 
       #source on source error
-      predicty = self.predict(source_testx, 'source', 'source', i)
-      ss_error = self.score(predicty, source_testy, task)
+      predict_y = self.predict(source_testx, 'source', 'source', i)
+      ss_error  = self.score(predict_y, source_testy, task)
       eval_list.append(flatten({'task': 'source-source',
                                 'env_id': int(i), 
                                 'predict error': ss_error}))
 
 
       # source on target error
-      predicty = self.predict(target_testx, 'source', 'source', i)
-      st_error = self.score(predicty,  target_testy, task)
+      predict_y = self.predict(target_testx, 'source', 'source', i)
+      st_error  = self.score(predict_y,  target_testy, task)
       eval_list.append(flatten({'task': 'source-target',
                                 'env_id': int(i), 
                                 'predict error': st_error}))
 
 
     # target on target errror
-    predicty = self.predict(target_testx, 'target', 'target', 0)
-    tt_error = self.score(predicty, target_testy, task)
+    predict_y = self.predict(target_testx, 'target', 'target', 0)
+    tt_error  = self.score(predict_y, target_testy, task)
     eval_list.append(flatten({'task': 'target-target',
                               'env_id': 0+n_env,
                               'predict error': tt_error}))
 
 
     #adaptation error
-    predicty = self.predict(target_testx, 'source', 'target', 0)
-    adapt_error = self.score(predicty,  target_testy, task)
+    predict_y   = self.predict(target_testx, 'source', 'target', 0)
+    adapt_error = self.score(predict_y,  target_testy, task)
     eval_list.append(flatten({'task': 'adaptation',
                               'env_id': 0+n_env, 
                               'predict error': adapt_error}))
@@ -207,13 +215,13 @@ class MultiKernelMethod(KernelMethod):
       cme_w_x = self.source_estimator['cme_w_x'][env_idx]
       #cme_w_xz = self.source_estimator['cme_w_xz']
 
-      #predicty = m0.get_exp_y_xz(testX, cme_w_xz)
+      #predict_y = m0.get_exp_y_xz(testX, cme_w_xz)
       
     else:
       cme_w_x = self.target_estimator['cme_w_x'][0]
 
-    predicty = m0.get_exp_y_x(testX, cme_w_x)
-    return predicty
+    predict_y = m0.get_exp_y_x(testX, cme_w_x)
+    return predict_y
 
   def split_data(self):
     #split training data

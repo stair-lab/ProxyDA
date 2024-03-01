@@ -87,9 +87,9 @@ class MultiSourceMK:
   def predict(self, xnew):
     #create feature map
     weight_ker_newxx = self.transform_feature_x(np.array(xnew))
-    predicty = self.svc.predict(weight_ker_newxx)
+    predict_y = self.svc.predict(weight_ker_newxx)
 
-    return predicty
+    return predict_y
 
   def decision(self, xnew):
     """Min-max scale output of `decision_function` to [0, 1]."""

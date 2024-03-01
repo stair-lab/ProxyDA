@@ -73,8 +73,8 @@ class MuiltiSourceCCM:
   def predict(self, x_new):
     weight_x = np.array([np.exp(probx.score_samples(x_new)) for probx in self.kde_x])
     normalized_weight_x = normalize(np.array(weight_x), axis=0)
-    predicty = np.array([clf.predict(x_new) for clf in self.classifiers])
-    return np.sum((normalized_weight_x*predicty).T, axis=1)
+    predict_y = np.array([clf.predict(x_new) for clf in self.classifiers])
+    return np.sum((normalized_weight_x*predict_y).T, axis=1)
 
   def predict_proba(self, x_new):
     weight_x = np.array([np.exp(probx.score_samples(x_new)) for probx in self.kde_x])
@@ -125,11 +125,11 @@ class MultiSourceUniform:
     return self
 
   def predict(self, new_x):
-    predicty = np.zeros((new_x.shape[0], self.n_env))
+    predict_y = np.zeros((new_x.shape[0], self.n_env))
     for i, clf in enumerate(self.classifiers):
-      predicty[:, i] = clf.predict(new_x)
+      predict_y[:, i] = clf.predict(new_x)
 
-    return np.sum(predicty, axis=1)/self.n_env
+    return np.sum(predict_y, axis=1)/self.n_env
 
   def predict_proba(self, new_x):
 
@@ -163,9 +163,9 @@ class MultiSourceUniformReg:
     return self
 
   def predict(self, new_x):
-    predicty = np.zeros((new_x.shape[0], self.n_env))
+    predict_y = np.zeros((new_x.shape[0], self.n_env))
     for i, reg in enumerate(self.regressors):
-      predicty[:, i] = reg.predict(new_x)
+      predict_y[:, i] = reg.predict(new_x)
 
-    return np.sum(predicty, axis=1)/self.n_env
+    return np.sum(predict_y, axis=1)/self.n_env
 

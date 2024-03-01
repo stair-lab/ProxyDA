@@ -22,7 +22,7 @@ class MultiEnvAdapt(MultiKernelMethod):
   (W,X) from the target
   """
 
-  def _fit_source_domains(self, domain_data, task='r'):
+  def _fit_one_domain(self, domain_data, task='r'):
     """ fit single domain.
     Args:
         domain_data: data to train, [list of data of each environment]
@@ -125,7 +125,7 @@ class MultiEnvAdaptCAT(MultiKernelMethod):
   (W,X) from the target when Z is a discrete variable
   """
 
-  def _fit_source_domains(self, domain_data, task='r'):
+  def _fit_one_domain(self, domain_data, task='r'):
     """ fit single domain.
     Args:
         domain_data: data to train, [list of data of each environment]
