@@ -177,7 +177,7 @@ estimator_multi_a = MultiEnvAdapt(source_train,
 
 ## Run Experiments
 Navigate the examples in `./tests` directory. 
-First execute the model selection prgoram under `./model_selection` then run the program under `./experiments` folder.
+First execute the model selection program under `./model_selection` then run the program under `./experiments` folder.
 
 
 
