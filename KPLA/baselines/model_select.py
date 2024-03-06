@@ -1,5 +1,5 @@
 """
-Implements model selection for kernel ridge regression
+Implements model selection for kernel ridge regression.
 """
 
 # Author: Katherine Tsai <kt14@illinois.edu>

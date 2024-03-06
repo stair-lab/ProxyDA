@@ -12,7 +12,7 @@ import jax.numpy as jnp
 
 
 def gen_U(Z, n, s1, s2, key):
-    """Samples U."""
+    """Sample U."""
     if Z == 0:
         # Reversed setting (0.1, 0.9), original setting (0.9, 0.1)
         print("Z is 0")
@@ -27,13 +27,13 @@ def gen_U(Z, n, s1, s2, key):
 
 
 def gen_X(n, var, mean, key):
-    """Samples X."""
+    """Sample X."""
     X = random.normal(key[0], (n,)) * var + mean
     return X
 
 
 def gen_W(U, n, key):
-    """Samples W|U."""
+    """Sample W|U."""
     W1 = random.normal(key[0], (n,)) * 0.01 - 1
     W2 = random.normal(key[0], (n,)) * 0.01 + 1
     W = (1 - U) * W1 + U * W2
@@ -41,7 +41,7 @@ def gen_W(U, n, key):
 
 
 def gen_Y(X, U):
-    """Samples Y|X,U."""
+    """Sample Y|X,U."""
     Y1 = -X
     Y2 = X
     Y = (1 - U) * Y1 + U * Y2
