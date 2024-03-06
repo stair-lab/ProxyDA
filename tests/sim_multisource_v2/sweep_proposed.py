@@ -27,6 +27,9 @@ args = parser.parse_args()
 
 
 out_fname = "sweep_proposed_v2"
+if args.fixs <= 1:
+    out_fname += "_fixscale"
+out_fname += ".csv"
 
 file_path = "./model_select/"
 main_df = pd.DataFrame()
@@ -34,9 +37,7 @@ for s1 in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
     fname = f"test_proposed_v2_onehot_{s1}_m_{args.mean}_var_{args.var}"
     if args.fixs <= 1:
         fname += "_fixscale"
-        out_fname += "_fixscale"
     fname += ".csv"
-    out_fname += ".csv"
     s2 = 1.0 - s1
 
     ####################
@@ -127,8 +128,6 @@ for s1 in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
     kernel_dict["cme_w_x"] = {"X": X_kernel, "Y": W_kernel}  # Y is W
     kernel_dict["m0"] = {"X": X_kernel}
 
-    split = False
-
     df = pd.read_csv(file_path + fname)
 
     best_lam_set = {
@@ -141,6 +140,9 @@ for s1 in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
 
     print("best lam:", best_lam_set)
     print("best scale:", best_scale)
+
+    split = False
+    scale = 1
 
     estimator_full = MultiEnvAdapt(
         source_train,

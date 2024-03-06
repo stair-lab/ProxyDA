@@ -174,7 +174,7 @@ best_parameter["n_env"] = args.n_env
 
 path = "./"
 df = pd.DataFrame.from_records([best_parameter])
-df.to_csv(path + args.fname + ".csv")
+df.to_csv(path + fname + ".csv")
 
 
 print("Evaluation of best_model")
