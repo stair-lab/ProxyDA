@@ -28,6 +28,8 @@ parser.add_argument("--n_env", type=int, default=2)
 parser.add_argument("--var", type=float, default=1.0)
 parser.add_argument("--mean", type=float, default=0)
 parser.add_argument("--fixs", type=bool, default=False)
+parser.add_argument("--kernel", type=str, default="rbf")
+parser.add_argument("--add_w", type=bool, default=False)
 args = parser.parse_args()
 
 
@@ -115,12 +117,8 @@ for s1 in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
     RESULTS = {}
     metrics = []
     MODEL = KernelRidge
-    kernel = "rbf"
-    add_w = False
     # Regress with W
-    if add_w:
-        print(source_cat_train["X"].shape)
-        print(source_cat_train["W"].shape)
+    if args.add_w:
         source_cat_train["covar"] = np.stack(
             (source_cat_train["X"].squeeze(), source_cat_train["W"])
         ).T
@@ -133,16 +131,17 @@ for s1 in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
         target_test[0]["covar"] = np.stack(
             (target_test[0]["X"].squeeze(), target_test[0]["W"])
         ).T
+
     else:
-        source_cat_train["covar"] = source_cat_train["X"]
-        source_cat_test["covar"] = source_cat_test["X"]
-        target_train[0]["covar"] = target_train[0]["X"]
-        target_test[0]["covar"] = target_test[0]["X"]
+        source_cat_train["covar"] = source_cat_train["X"].reshape(-1, 1)
+        source_cat_test["covar"] = source_cat_test["X"].reshape(-1, 1)
+        target_train[0]["covar"] = target_train[0]["X"].reshape(-1, 1)
+        target_test[0]["covar"] = target_test[0]["X"].reshape(-1, 1)
 
     ####################
     # Source ERM       #
     ####################
-    kr_model = MODEL(kernel=kernel)
+    kr_model = MODEL(kernel=args.kernel)
     source_erm, source_erm_hparams = select_kernel_ridge_model(
         kr_model,
         source_cat_train["covar"],
@@ -163,7 +162,7 @@ for s1 in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
     ####################
     # Target ERM       #
     ####################
-    kr_model = MODEL(kernel=kernel)
+    kr_model = MODEL(kernel=args.kernel)
     target_erm, target_erm_hparams = select_kernel_ridge_model(
         kr_model,
         target_train[0]["covar"],
