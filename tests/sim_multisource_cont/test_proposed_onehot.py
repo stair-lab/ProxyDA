@@ -216,226 +216,228 @@ def gen_target_data(n_env, n, seed_list):
   return data_list
 
 
-sd_train_list = sd_lst[:n_env]
-print('generate training data for source domain')
-source_train = gen_source_data(n_env, n, sd_train_list)
+for i in range(10):
 
-#test set only has 1000 samples
-print('generate testing data for source domain')
-sd_test_list = sd_lst[n_env:n_env*2]
-source_test = gen_source_data(n_env, 1000, sd_test_list)
+  sd_train_list = sd_lst[i*n_env:n_env*(i+1)]
+  print('generate training data for source domain')
+  source_train = gen_source_data(n_env, n, sd_train_list)
 
-#generate data from target domain
+  #test set only has 1000 samples
+  print('generate testing data for source domain')
+  sd_test_list = sd_lst[(9-i)*n_env:n_env*(10-i)]
+  source_test = gen_source_data(n_env, 1000, sd_test_list)
 
-
-#target_train = gen_target_data(2, n*2, [5949])
-target_train = gen_target_data(2, n, [5949])
-target_test  = gen_target_data(2, 1000, [5654])
+  #generate data from target domain
 
 
-print('data generation complete')
-print('number of source environments:', len(source_train))
-print('source_train number of samples: ', source_train[0]['X'].shape[0]*n_env)
-print('source_test  number of samples: ', source_test[0]['X'].shape[0])
-print('number of target environments:', len(target_train))
-print('target_train number of samples: ', target_train[0]['X'].shape[0])
-print('target_test  number of samples: ', target_test[0]['X'].shape[0])
+  #target_train = gen_target_data(2, n*2, [5949])
+  target_train = gen_target_data(2, n, [sd_lst[i]])
+  target_test  = gen_target_data(2, 1000, [sd_lst[i+1]])
 
 
-
-
-print('data generation complete')
-print('number of source environments:', len(source_train))
-print('source_train number of samples: ', source_train[0]['X'].shape[0]*n_env)
-print('source_test  number of samples: ', source_test[0]['X'].shape[0])
-print('number of target environments:', len(target_train))
-print('target_train number of samples: ', target_train[0]['X'].shape[0])
-print('target_test  number of samples: ', target_test[0]['X'].shape[0])
-
-#check shape
-print('X shape', source_train[0]['X'].shape)
-print('Y shape', source_train[0]['Y'].shape)
-print('W shape', source_train[0]['W'].shape)
-print('U shape', source_train[0]['U'].shape)
-
-# plot x,y
-f, (ax1, ax2, ax3) = plt.subplots(1, 3, sharey=True, figsize=(15, 5))
-
-ax1.scatter(source_train[0]['X'], source_train[0]['Y'], color='b', alpha=0.3, label='env 0')
-ax1.legend(loc="upper right")
-ax1.set_ylabel('Y')
-
-ax2.scatter(source_train[1]['X'], source_train[1]['Y'],color='g', alpha=0.3, label='env 1')
-ax2.legend(loc="upper right")
-ax2.set_xlabel('X')
-ax3.scatter(target_train[0]['X'], target_train[0]['Y'], color='r', alpha=0.3, label='target env')
-ax3.legend(loc="upper right")
-plt.savefig(out_dir+f'plot_xy_a{a}b{b}.png')
-
-# plot u, x 
-plt.figure()
-f, (ax1, ax2, ax3) = plt.subplots(1, 3, sharey=True, figsize=(15, 5))
-
-ax1.scatter(source_train[0]['U'], source_train[0]['X'], color='b', alpha=0.3, label='env 0')
-ax1.legend(loc="upper right")
-ax1.set_ylabel('X')
-
-ax2.scatter(source_train[1]['U'], source_train[1]['X'],color='g', alpha=0.3, label='env 1')
-ax2.legend(loc="upper right")
-ax2.set_xlabel('U')
-ax3.scatter(target_train[0]['U'], target_train[0]['X'], color='r', alpha=0.3, label='target env')
-ax3.legend(loc="upper right")
-plt.savefig(out_dir+f'plot_ux_a{a}b{b}.png')
-
-
-# plot u, y 
-plt.figure()
-f, (ax1, ax2, ax3) = plt.subplots(1, 3, sharey=True, figsize=(15, 5))
-
-ax1.scatter(source_train[0]['U'], source_train[0]['Y'], color='b', alpha=0.3, label='env 0')
-ax1.legend(loc="upper right")
-ax1.set_ylabel('Y')
-
-ax2.scatter(source_train[1]['U'], source_train[1]['Y'],color='g', alpha=0.3, label='env 1')
-ax2.legend(loc="upper right")
-ax2.set_xlabel('U')
-ax3.scatter(target_train[0]['U'], target_train[0]['Y'], color='r', alpha=0.3, label='target env')
-ax3.legend(loc="upper right")
-plt.savefig(out_dir+f'plot_uy_a{a}b{b}.png')
-
-
-# plot u, w 
-plt.figure()
-f, (ax1, ax2, ax3) = plt.subplots(1, 3, sharey=True, figsize=(15, 5))
-
-ax1.scatter(source_train[0]['U'], source_train[0]['W'], color='b', alpha=0.3, label='env 0')
-ax1.legend(loc="upper right")
-ax1.set_ylabel('W')
-
-ax2.scatter(source_train[1]['U'], source_train[1]['W'],color='g', alpha=0.3, label='env 1')
-ax2.legend(loc="upper right")
-ax2.set_xlabel('U')
-ax3.scatter(target_train[0]['U'], target_train[0]['W'], color='r', alpha=0.3, label='target env')
-ax3.legend(loc="upper right")
-plt.savefig(out_dir+f'plot_uw_a{a}b{b}.png')
-
-
-# plot x, w 
-plt.figure()
-f, (ax1, ax2, ax3) = plt.subplots(1, 3, sharey=True, figsize=(15, 5))
-
-ax1.scatter(source_train[0]['X'], source_train[0]['W'], color='b', alpha=0.3, label='env 0')
-ax1.legend(loc="upper right")
-ax1.set_ylabel('W')
-
-ax2.scatter(source_train[1]['X'], source_train[1]['W'],color='g', alpha=0.3, label='env 1')
-ax2.legend(loc="upper right")
-ax2.set_xlabel('U')
-ax3.scatter(target_train[0]['X'], target_train[0]['W'], color='r', alpha=0.3, label='target env')
-ax3.legend(loc="upper right")
-plt.savefig(out_dir+f'plot_xw_a{a}b{b}.png')
-
-
-
-lam_set = {'cme': 1e-4, 'm0': 1e-4, 'lam_min':-4, 'lam_max':-1}
-method_set = {'cme': 'original', 'm0': 'original', 'm0': 'original'}
-
-#specity the kernel functions for each estimator
-kernel_dict = {}
-
-X_kernel = 'rbf'
-W_kernel = 'rbf'
-kernel_dict['cme_w_xz'] = {'X': X_kernel, 'Y': W_kernel, 'Z': 'binary'} #Y is W
-kernel_dict['cme_w_x']  = {'X': X_kernel, 'Y': W_kernel} # Y is W
-kernel_dict['m0']       = {'X': X_kernel}
-scale =  1
-split=False
+  print('data generation complete')
+  print('number of source environments:', len(source_train))
+  print('source_train number of samples: ', source_train[0]['X'].shape[0]*n_env)
+  print('source_test  number of samples: ', source_test[0]['X'].shape[0])
+  print('number of target environments:', len(target_train))
+  print('target_train number of samples: ', target_train[0]['X'].shape[0])
+  print('target_test  number of samples: ', target_test[0]['X'].shape[0])
 
 
 
 
+  print('data generation complete')
+  print('number of source environments:', len(source_train))
+  print('source_train number of samples: ', source_train[0]['X'].shape[0]*n_env)
+  print('source_test  number of samples: ', source_test[0]['X'].shape[0])
+  print('number of target environments:', len(target_train))
+  print('target_train number of samples: ', target_train[0]['X'].shape[0])
+  print('target_test  number of samples: ', target_test[0]['X'].shape[0])
+
+  #check shape
+  print('X shape', source_train[0]['X'].shape)
+  print('Y shape', source_train[0]['Y'].shape)
+  print('W shape', source_train[0]['W'].shape)
+  print('U shape', source_train[0]['U'].shape)
+
+  # plot x,y
+  f, (ax1, ax2, ax3) = plt.subplots(1, 3, sharey=True, figsize=(15, 5))
+
+  ax1.scatter(source_train[0]['X'], source_train[0]['Y'], color='b', alpha=0.3, label='env 0')
+  ax1.legend(loc="upper right")
+  ax1.set_ylabel('Y')
+
+  ax2.scatter(source_train[1]['X'], source_train[1]['Y'],color='g', alpha=0.3, label='env 1')
+  ax2.legend(loc="upper right")
+  ax2.set_xlabel('X')
+  ax3.scatter(target_train[0]['X'], target_train[0]['Y'], color='r', alpha=0.3, label='target env')
+  ax3.legend(loc="upper right")
+  plt.savefig(out_dir+f'plot_xy_a{a}b{b}.png')
+
+  # plot u, x 
+  plt.figure()
+  f, (ax1, ax2, ax3) = plt.subplots(1, 3, sharey=True, figsize=(15, 5))
+
+  ax1.scatter(source_train[0]['U'], source_train[0]['X'], color='b', alpha=0.3, label='env 0')
+  ax1.legend(loc="upper right")
+  ax1.set_ylabel('X')
+
+  ax2.scatter(source_train[1]['U'], source_train[1]['X'],color='g', alpha=0.3, label='env 1')
+  ax2.legend(loc="upper right")
+  ax2.set_xlabel('U')
+  ax3.scatter(target_train[0]['U'], target_train[0]['X'], color='r', alpha=0.3, label='target env')
+  ax3.legend(loc="upper right")
+  plt.savefig(out_dir+f'plot_ux_a{a}b{b}.png')
 
 
-estimator_full = MultiEnvAdapt(source_train,
-                                target_train,
-                                source_test,
-                                target_test,
-                                split,
-                                scale,
-                                lam_set,
-                                method_set,
-                                kernel_dict)
-estimator_full.fit(task='r')
-estimator_full.evaluation(task='r')
+  # plot u, y 
+  plt.figure()
+  f, (ax1, ax2, ax3) = plt.subplots(1, 3, sharey=True, figsize=(15, 5))
 
-if args.fixs <= 1:
-  fix_scale = True
-else:
-  fix_scale = False
-best_estimator, best_parameter = tune_multienv_adapt_model_cv(source_train,
-                                                        target_train,
-                                                        source_test,
-                                                        target_test,
-                                                        method_set,
-                                                        kernel_dict,
-                                                        MultiEnvAdapt,
-                                                        task='r',
-                                                        n_params=10,
-                                                        n_fold=5,
-                                                        min_log=-4,
-                                                        max_log=3,
-                                                        fix_scale=fix_scale)
+  ax1.scatter(source_train[0]['U'], source_train[0]['Y'], color='b', alpha=0.3, label='env 0')
+  ax1.legend(loc="upper right")
+  ax1.set_ylabel('Y')
 
-best_parameter['source_nsample'] = n
-best_parameter['n_env'] = n_env
-
-path = './'
-df = pd.DataFrame.from_records([best_parameter])
-df.to_csv(path+args.fname+'.csv')
+  ax2.scatter(source_train[1]['U'], source_train[1]['Y'],color='g', alpha=0.3, label='env 1')
+  ax2.legend(loc="upper right")
+  ax2.set_xlabel('U')
+  ax3.scatter(target_train[0]['U'], target_train[0]['Y'], color='r', alpha=0.3, label='target env')
+  ax3.legend(loc="upper right")
+  plt.savefig(out_dir+f'plot_uy_a{a}b{b}.png')
 
 
+  # plot u, w 
+  plt.figure()
+  f, (ax1, ax2, ax3) = plt.subplots(1, 3, sharey=True, figsize=(15, 5))
+
+  ax1.scatter(source_train[0]['U'], source_train[0]['W'], color='b', alpha=0.3, label='env 0')
+  ax1.legend(loc="upper right")
+  ax1.set_ylabel('W')
+
+  ax2.scatter(source_train[1]['U'], source_train[1]['W'],color='g', alpha=0.3, label='env 1')
+  ax2.legend(loc="upper right")
+  ax2.set_xlabel('U')
+  ax3.scatter(target_train[0]['U'], target_train[0]['W'], color='r', alpha=0.3, label='target env')
+  ax3.legend(loc="upper right")
+  plt.savefig(out_dir+f'plot_uw_a{a}b{b}.png')
 
 
-print('evaluation on best_model')
-best_estimator.evaluation(task='r')
+  # plot x, w 
+  plt.figure()
+  f, (ax1, ax2, ax3) = plt.subplots(1, 3, sharey=True, figsize=(15, 5))
 
-"""
-#file_path = '.'
-#df = pd.read_csv(file_path+'classification_model_select.csv')
+  ax1.scatter(source_train[0]['X'], source_train[0]['W'], color='b', alpha=0.3, label='env 0')
+  ax1.legend(loc="upper right")
+  ax1.set_ylabel('W')
 
-#best_lam_set = {'cme': df['alpha'].values[0],
-#                'm0':  df['alpha2'].values[0],
-#                'lam_min':-4, 
-#                'lam_max':-1}
-#best_scale =  df['scale'].values[0]
-"""
-split = False
-best_lam_set     = best_estimator.get_params()['lam_set']
-best_scale       = best_estimator.get_params()['scale']
-best_method_set  = best_estimator.get_params()['method_set']
-best_kernel_dict = best_estimator.get_params()['kernel_dict']
-split = False
+  ax2.scatter(source_train[1]['X'], source_train[1]['W'],color='g', alpha=0.3, label='env 1')
+  ax2.legend(loc="upper right")
+  ax2.set_xlabel('U')
+  ax3.scatter(target_train[0]['X'], target_train[0]['W'], color='r', alpha=0.3, label='target env')
+  ax3.legend(loc="upper right")
+  plt.savefig(out_dir+f'plot_xw_a{a}b{b}.png')
 
 
-print('best lam:', best_lam_set)
-print('best scale:', best_scale)
+
+  lam_set = {'cme': 1e-4, 'm0': 1e-4, 'lam_min':-4, 'lam_max':-1}
+  method_set = {'cme': 'original', 'm0': 'original', 'm0': 'original'}
+
+  #specity the kernel functions for each estimator
+  kernel_dict = {}
+
+  X_kernel = 'rbf'
+  W_kernel = 'rbf'
+  kernel_dict['cme_w_xz'] = {'X': X_kernel, 'Y': W_kernel, 'Z': 'binary'} #Y is W
+  kernel_dict['cme_w_x']  = {'X': X_kernel, 'Y': W_kernel} # Y is W
+  kernel_dict['m0']       = {'X': X_kernel}
+  scale =  1
+  split=False
 
 
-split = False
 
 
-estimator_full = MultiEnvAdapt(source_train,
+
+
+  estimator_full = MultiEnvAdapt(source_train,
                                   target_train,
                                   source_test,
                                   target_test,
                                   split,
-                                  best_scale,
-                                  best_lam_set,
+                                  scale,
+                                  lam_set,
                                   method_set,
                                   kernel_dict)
-estimator_full.fit(task='r')
+  estimator_full.fit(task='r')
+  estimator_full.evaluation(task='r')
+
+  if args.fixs <= 1:
+    fix_scale = True
+  else:
+    fix_scale = False
+  best_estimator, best_parameter = tune_multienv_adapt_model_cv(source_train,
+                                                          target_train,
+                                                          source_test,
+                                                          target_test,
+                                                          method_set,
+                                                          kernel_dict,
+                                                          MultiEnvAdapt,
+                                                          task='r',
+                                                          n_params=10,
+                                                          n_fold=5,
+                                                          min_log=-4,
+                                                          max_log=3,
+                                                          fix_scale=fix_scale)
+
+  best_parameter['source_nsample'] = n
+  best_parameter['n_env'] = n_env
+
+  path = './'
+  df = pd.DataFrame.from_records([best_parameter])
+  df.to_csv(path+args.fname+'_'+str(i)+'.csv')
 
 
-estimator_full.evaluation(task='r')
+
+
+  print('evaluation on best_model')
+  best_estimator.evaluation(task='r')
+
+  """
+  #file_path = '.'
+  #df = pd.read_csv(file_path+'classification_model_select.csv')
+
+  #best_lam_set = {'cme': df['alpha'].values[0],
+  #                'm0':  df['alpha2'].values[0],
+  #                'lam_min':-4, 
+  #                'lam_max':-1}
+  #best_scale =  df['scale'].values[0]
+  """
+  split = False
+  best_lam_set     = best_estimator.get_params()['lam_set']
+  best_scale       = best_estimator.get_params()['scale']
+  best_method_set  = best_estimator.get_params()['method_set']
+  best_kernel_dict = best_estimator.get_params()['kernel_dict']
+  split = False
+
+
+  print('best lam:', best_lam_set)
+  print('best scale:', best_scale)
+
+
+  split = False
+
+
+  estimator_full = MultiEnvAdapt(source_train,
+                                    target_train,
+                                    source_test,
+                                    target_test,
+                                    split,
+                                    best_scale,
+                                    best_lam_set,
+                                    method_set,
+                                    kernel_dict)
+  estimator_full.fit(task='r')
+
+
+  estimator_full.evaluation(task='r')
 
 
