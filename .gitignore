@@ -1,4 +1,9 @@
 __pycache__
-*results*
-*jobs*
-*temp*
+
+# Python egg metadata, regenerated from source files by setuptools.
+**/*.egg-info
+.eggs/
+
+# PyPI distribution artifacts.
+build/
+dist/
