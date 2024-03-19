@@ -2,26 +2,29 @@ from jax import random
 import numpy as np
 import jax.numpy as jnp
 
+import os, pickle
 import pandas as pd
 import numpy as np
-import copy
-
-
+from KPLA.models.plain_kernel.multienv_adaptation import MultiEnvAdaptCAT, MultiEnvAdapt
+from KPLA.models.plain_kernel.model_selection import tune_multienv_adapt_model_cv
 from KPLA.baselines.multi_source_ccm import MultiSouceSimpleAdapt, MultiSourceUniformReg
 from KPLA.baselines.multi_source_cat import MultiSourceCatReg
 from KPLA.baselines.multi_source_ccm import MultiSouceSimpleAdapt, MultiSourceUniformReg
+from multiprocessing import Pool, cpu_count
+
+import copy
 from KPLA.models.plain_kernel.kernel_utils import standardise
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import KFold
+from sklearn.gaussian_process.kernels import RBF
+from sklearn.metrics import roc_auc_score
 from sklearn.kernel_ridge import KernelRidge
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import make_scorer, mean_squared_error
 from KPLA.baselines.model_select import select_kernel_ridge_model
 from sklearn.neighbors import KernelDensity
 
-import itertools
 import argparse
-
 parser = argparse.ArgumentParser()
 parser.add_argument("--s", type=float, default=0.2)
 parser.add_argument("--var", type=float, default=1.0)
@@ -32,6 +35,7 @@ parser.add_argument("--fixs", type=bool, default=False)
 parser.add_argument("--fname", type=str)
 args = parser.parse_args()
 
+
 def convert_data_Y2D(source, target):
   source_Y = np.zeros_like(source['Y'])
   target_Y = np.ones_like(target['Y'])
@@ -40,29 +44,21 @@ def convert_data_Y2D(source, target):
       'covar': np.concatenate([source['covar'], target['covar']], axis=0),
       'Y': np.concatenate([source_Y, target_Y], axis=0).ravel()
   }
-
-#s1= args.s 
-#s2 = 1. - args.s
 main_summary = pd.DataFrame()
-a_list = [1, 2, 3, 4, 5]
-b_list = [1, 2, 3, 4, 5]
 
-for sdj in [8]:
-  for a, b in itertools.product(a_list, b_list):
-    
+for sdj in range(1):
+  for s1 in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
+    s2 = 1-s1
     def gen_U(Z, n, key):
-      print(Z)
       if Z == 0:
-        #reversed setting (0.1, 0.9) #original setting (0.9, 0.1)
-        print('Z is 0')
-        U = random.beta(key[0], 2, 5, (n,))
+        U = random.choice(key[0], jnp.arange(2), (n,), p=np.array([.9, .1]))
       elif Z == 1:
-        print('Z is 1')
-        U = random.beta(key[0], 5, 2, (n,))
+        U = random.choice(key[0], jnp.arange(2), (n,), p=np.array([.1, .9]))
       else: # for target domain
-        print('Z is 2')
-        U = random.beta(key[0], a, b, (n,))
+        U = random.choice(key[0], jnp.arange(2), (n,), p=np.array([s1, s2]))
+      
       return U
+
 
     def gen_X(U, n,  key):
       X1 = random.normal(key[0],(n,))*args.var + args.mean
@@ -80,11 +76,12 @@ for sdj in [8]:
 
 
     def gen_Y(X, U, n):
-      #Y1 = -X.squeeze()
-      #Y2 = X.squeeze()
-      #Y = (1-U)*Y1 + U*Y2
-      Y = (2*U-1)*X.squeeze()
+      Y1 = -X.squeeze()
+      Y2 = X.squeeze()
+      Y = (1-U)*Y1 + U*Y2
       return Y
+
+
 
 
     ####################
@@ -93,6 +90,7 @@ for sdj in [8]:
 
     n_env = 2
         
+
 
 
     seed_list = {}
@@ -282,13 +280,14 @@ for sdj in [8]:
       source_cat_test['covar']  = source_cat_test['X']
       target_train[0]['covar']  = target_train[0]['X']
       target_test[0]['covar']   = target_test[0]['X']
+
     N_PARAMS = 10
     N_FOLD = 5
     source_erm, source_erm_hparams = select_kernel_ridge_model(kr_model, 
                                                               source_cat_train['covar'],
                                                               source_cat_train['Y'],
-                                                              n_params=10,
-                                                                n_fold=5,
+                                                              n_params=N_PARAMS,
+                                                                n_fold=N_FOLD,
                                                                 min_val=-4,
                                                                 max_val=3)
     #source_erm.fit(source_cat_train['X'],
@@ -296,7 +295,6 @@ for sdj in [8]:
 
     # source_erm.fit(source_train['X'], source_train['Y'])
     erm_metrics = {'approach': 'ERM'}
-    print('shape', source_cat_test['Y'].shape)
     erm_metrics['source -> source'] = mean_squared_error(source_cat_test['Y'], source_erm.predict(source_cat_test['covar']))
     erm_metrics['source -> target'] = mean_squared_error(target_test[0]['Y'], source_erm.predict(target_test[0]['covar']))
 
@@ -312,10 +310,10 @@ for sdj in [8]:
     target_erm, target_erm_hparams = select_kernel_ridge_model(kr_model, 
                                                               target_train[0]['covar'],
                                                               target_train[0]['Y'],
-                                                              n_params=10,
-                                                                n_fold=5,
-                                                                min_val=-4,
-                                                                max_val=3)
+                                                              n_params=N_PARAMS,
+                                                              n_fold=N_FOLD,
+                                                              min_val=-4,
+                                                              max_val=3)
     erm_metrics['target -> target'] = mean_squared_error(target_test[0]['Y'], target_erm.predict(target_test[0]['covar']))
     erm_metrics['target -> source'] = mean_squared_error(source_cat_test['Y'], target_erm.predict(source_cat_test['covar']))
 
@@ -323,6 +321,7 @@ for sdj in [8]:
 
     metrics.append(erm_metrics)
     print(erm_metrics)
+
 
 
 
@@ -559,10 +558,9 @@ for sdj in [8]:
     metrics.append(mssa_metrics)
     print(mssa_metrics)
 
-
     summary = pd.DataFrame.from_records(metrics)
-    summary['a'] = a
-    summary['b'] = b
+    summary['pU=0'] = s1
+    summary['seed'] = sdj
     main_summary = pd.concat([main_summary, summary])
 
-  main_summary.to_csv(f'sweep_baseline_seed{sdj}.csv', index=False)
+  main_summary.to_csv(f'sweep_baseline_v2_v4_seeds{sdj}.csv', index=False)
