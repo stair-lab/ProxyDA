@@ -1,9 +1,7 @@
-"""
-    Cross-validation pipeline for the adaptation methods
-"""
+"""Cross-validation pipeline for the adaptation methods."""
 
 # Author: Katherine Tsai <kt14@illinois.edu>
-# License: MIT
+# MIT License
 
 
 import copy
@@ -17,17 +15,17 @@ from sklearn.metrics import roc_auc_score, accuracy_score
 from sklearn.preprocessing import normalize
 
 
-def cv_evaluation(valdata_y, predict_y, task, thre):
+def cv_evaluation(valdata_y, predict_y, task, thre, verbose=False):
     """Evaluation using cross-validation.
 
     Args:
-      valdata_y: true Y, jax.numpy.array or numpy.darray
-      predict_y:  prediected Y, jax.numpy.array or numpy.darray
-      task:       "r" for regression task, "c" for classification task, str
-      thre:       threshold, float
+        valdata_y: true Y, jax.numpy.array or numpy.darray
+        predict_y: prediected Y, jax.numpy.array or numpy.darray
+        task:      "r" for regression task, "c" for classification task, str
+        thre:      threshold, float
+        verbose:   verbosity flag, bool
     """
     try:
-        # try:
         if task == "r":
             mse_err = mean_squared_error(
                 np.array(valdata_y), np.array(predict_y)
@@ -36,7 +34,7 @@ def cv_evaluation(valdata_y, predict_y, task, thre):
 
         elif task == "c":
             if len(valdata_y.shape) >= 2:
-                # classification where Y is one-hot encoded
+                # Classification where Y is one-hot encoded
                 testy_label = np.array(jnp.argmax(jnp.abs(valdata_y), axis=1))
                 predicty_prob = normalize(np.array(jnp.abs(predict_y)), axis=1)
                 predicty_label = np.array(
@@ -48,7 +46,7 @@ def cv_evaluation(valdata_y, predict_y, task, thre):
                 # Y is either -1 or 1.
                 testy_label = copy.copy(valdata_y)
 
-                # correct -1 to 0
+                # Correct -1 to 0
                 idx = np.where(testy_label == -1)[0]
 
                 testy_label[idx] = 0.0
@@ -60,7 +58,8 @@ def cv_evaluation(valdata_y, predict_y, task, thre):
                 acc_err = accuracy_score(testy_label, predicty_label)
                 return acc_err
     except ValueError:
-        print("Caught error on param selection")
+        if verbose:
+            print("Caught error on param selection")
     return 0
 
 
@@ -81,30 +80,32 @@ def tune_adapt_model_cv(
     min_log=-4,
     max_log=4,
     thre=0.0,
+    verbose=False,
 ):
     """Model selection for adaptation with concepts and proxies.
 
     Args:
-      source_train:   training data of source domain, dict
-      target_train:   training data of target domain, dict
-      source_test:    testing  data of source domain, dict
-      target_test:    testing  data of target domain, dict
-      method_set:     methods for optimization, dict
-      kernel_dict:    selections of kernel, dict
-      model:          estimator, object class
-      use_validation: use held-out validation data, Boolean
-      val_set:        validation data if use_validation set True, dict
-      task:           evaluation method:
-                      "c" for classification;
-                      "r" for regression, str
-      fit_task:       method when fitting model:
-                      "c" for classification;
-                      "r" for regression, str
-      n_params:       number of parameters for searching, int
-      n_fold:         number of folds for cross-validation, int
-      min_log:        minimum value of the search log-scale, float
-      max_log:        maximum value of the search log-scale, float
-      thre:           threshold for classification task, float
+        source_train:   training data of source domain, dict
+        target_train:   training data of target domain, dict
+        source_test:    testing  data of source domain, dict
+        target_test:    testing  data of target domain, dict
+        method_set:     methods for optimization, dict
+        kernel_dict:    selections of kernel, dict
+        model:          estimator, object class
+        use_validation: use held-out validation data, Boolean
+        val_set:        validation data if use_validation set True, dict
+        task:           evaluation method:
+                        "c" for classification;
+                        "r" for regression, str
+        fit_task:       method when fitting model:
+                        "c" for classification;
+                        "r" for regression, str
+        n_params:       number of parameters for searching, int
+        n_fold:         number of folds for cross-validation, int
+        min_log:        minimum value of the search log-scale, float
+        max_log:        maximum value of the search log-scale, float
+        thre:           threshold for classification task, float
+        verbose:        verbosity flag, bool
     """
 
     best_estimator = None
@@ -126,7 +127,6 @@ def tune_adapt_model_cv(
             "lam_min": -4,
             "lam_max": 0,
         }
-        print(param, alpha, alpha2, scale)
         errs = []
         best_err_i = np.inf if task == "r" else -np.inf
         best_model_i = None
@@ -146,7 +146,7 @@ def tune_adapt_model_cv(
                 thre,
             )
             estimator.fit(task=fit_task)
-            # select parameters from source
+            # Select parameters from source
             predict_y = estimator.predict(
                 {"X": val_data["X"]}, "source", "source"
             )
@@ -157,11 +157,14 @@ def tune_adapt_model_cv(
         else:
             kf = KFold(n_splits=n_fold, random_state=None, shuffle=False)
 
-            # use cross validation method
+            # Use cross validation method
             for i, (train_idx, test_idx) in enumerate(
                 kf.split(source_train["X"])
             ):
-                print(f"({alpha}, {alpha2}, {scale}), Param {param} Fold {i}:")
+                if verbose:
+                    print(
+                        f"({alpha}, {alpha2}, {scale}), Param {param} Fold {i}:"
+                    )
 
                 source_train_cv_train = {
                     k: v[train_idx] for k, v in source_train.items()
@@ -184,7 +187,7 @@ def tune_adapt_model_cv(
                 )
 
                 estimator.fit(task=fit_task)
-                ##select parameters from source
+                # Select parameters from source
                 predict_y = estimator.predict(
                     {"X": source_train_cv_val["X"]}, "source", "source"
                 )
@@ -193,13 +196,13 @@ def tune_adapt_model_cv(
                 )
 
                 errs.append(error / len(source_train_cv_val))
-                ## select parameters from target
+                # Select parameters from target
                 improve_r = (
                     error < best_err_i
-                ) and task == "r"  # decrease mse
+                ) and task == "r"  # Decrease mse
                 improve_c = (
                     error > best_err_i
-                ) and task == "c"  # improve accuracy or aucroc
+                ) and task == "c"  # Improve accuracy or aucroc
                 if improve_r or improve_c:
                     best_err_i = error
                     best_model_i = estimator
@@ -215,10 +218,11 @@ def tune_adapt_model_cv(
             best_estimator = best_model_i
             best_params = {"alpha": alpha, "alpha2": alpha2, "scale": scale}
 
-            print(
-                f"update best parameters alpha: {alpha}, \
-            alpha2:{alpha2}, scale: {scale}, err: {np.mean(errs)}\n"
-            )
+            if verbose:
+                print(
+                    f"update best parameters alpha: {alpha}, \
+                alpha2:{alpha2}, scale: {scale}, err: {np.mean(errs)}\n"
+                )
 
     return best_estimator, best_params
 
@@ -241,31 +245,33 @@ def tune_multienv_adapt_model_cv(
     max_log=4,
     thre=0,
     fix_scale=False,
+    verbose=False,
 ):
     """Model selection for multi-env adaptation.
 
     Args:
-      source_train_list:   training data of source domain, [dict]
-      target_train_list:   training data of target domain, [dict]
-      source_test_list:    testing  data of source domain, [dict]
-      target_test_list:    testing  data of target domain, [dict]
-      method_set:     methods for optimization, dict
-      kernel_dict:    selections of kernel, dict
-      model:          estimator, object class
-      use_validation: use held-out validation data, Boolean
-      val_list:       validation data if use_validation set True, dict
-      task:           evaluation method:
-                      "c" for classification;
-                      "r" for regression, str
-      fit_task:       method when fitting model:
-                      "c" for classification;
-                      "r" for regression, str
-      n_params:       number of parameters for searching, int
-      n_fold:         number of folds for cross-validation, int
-      min_log:        minimum value of the search log-scale, float
-      max_log:        maximum value of the search log-scale, float
-      thre:           threshold for classification task, float
-      fix_scale:      not tuning the scaling parameter, Boolean
+        source_train_list:   training data of source domain, [dict]
+        target_train_list:   training data of target domain, [dict]
+        source_test_list:    testing  data of source domain, [dict]
+        target_test_list:    testing  data of target domain, [dict]
+        method_set:     methods for optimization, dict
+        kernel_dict:    selections of kernel, dict
+        model:          estimator, object class
+        use_validation: use held-out validation data, Boolean
+        val_list:       validation data if use_validation set True, dict
+        task:           evaluation method:
+                        "c" for classification;
+                        "r" for regression, str
+        fit_task:       method when fitting model:
+                        "c" for classification;
+                        "r" for regression, str
+        n_params:       number of parameters for searching, int
+        n_fold:         number of folds for cross-validation, int
+        min_log:        minimum value of the search log-scale, float
+        max_log:        maximum value of the search log-scale, float
+        thre:           threshold for classification task, float
+        fix_scale:      not tuning the scaling parameter, bool
+        verbose:        verbosity flag, bool
     """
 
     best_estimator = None
@@ -281,8 +287,8 @@ def tune_multienv_adapt_model_cv(
         params = product(
             np.logspace(min_log, max_log, n_params).tolist(),  # alpha
             np.logspace(min_log, max_log, n_params).tolist(),  # alpha2
-            np.logspace(min_log, max_log, n_params).tolist(),
-        )  # scale
+            np.logspace(min_log, max_log, n_params).tolist(),  # scale
+        )
 
     best_params = {}
 
@@ -324,7 +330,8 @@ def tune_multienv_adapt_model_cv(
         else:
             split_idx = kf.split(source_train_list[0]["X"])
             for i, (train_idx, test_idx) in enumerate(split_idx):
-                print(f"({alpha}, {alpha2}, {scale}), Fold {i}:")
+                if verbose:
+                    print(f"({alpha}, {alpha2}, {scale}), Fold {i}:")
 
                 def parse_by_id(par_idx, train_list):
                     return [
@@ -377,9 +384,10 @@ def tune_multienv_adapt_model_cv(
             best_estimator = best_model_i
             best_params = {"alpha": alpha, "alpha2": alpha2, "scale": scale}
 
-            print(
-                f"update best parameters alpha: {alpha}, alpha2:{alpha2} \
-              , scale: {scale}, err: {np.mean(errs)}\n"
-            )
+            if verbose:
+                print(
+                    f"update best parameters alpha: {alpha}, alpha2:{alpha2} \
+                    , scale: {scale}, err: {np.mean(errs)}\n"
+                )
 
     return best_estimator, best_params
