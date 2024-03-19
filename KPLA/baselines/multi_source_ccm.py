@@ -1,12 +1,12 @@
-"""
-implements multi-source CCM
+"""Implements multi-source CCM.
+
 Mansour, Y., Mohri, M., & Rostamizadeh, A. (2008). 
 Domain adaptation with multiple sources. 
 Advances in neural information processing systems, 21.
 """
 
 # Author: Katherine Tsai <kt14@illinois.edu>
-# License: MIT
+# MIT License
 
 
 import numpy as np
@@ -112,7 +112,7 @@ class MultiSouceSimpleAdapt(MuiltiSourceCCM):
     Advances in neural information processing systems, 21.
     """
 
-    def fit(self, source_data):
+    def fit(self, source_data, weight=None):
         weight = np.ones(self.n_env) / self.n_env
         super().fit(source_data, weight=weight)
 

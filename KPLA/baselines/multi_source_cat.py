@@ -1,9 +1,8 @@
-"""
-Implements simple multi-source baselines
-"""
+"""Implements simple multi-source baselines."""
 
 # Author: Katherine Tsai <kt14@illinois.edu>
-# License: MIT
+# MIT License
+
 import numpy as np
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 
