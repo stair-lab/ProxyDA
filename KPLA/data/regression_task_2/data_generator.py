@@ -12,13 +12,10 @@ def gen_U(Z, n, a, b, key):
     """Sample U."""
     if Z == 0:
         # Reversed setting (0.1, 0.9), original setting (0.9, 0.1)
-        print("Z is 0")
-        U = random.beta(key[0], 2, 5, (n,))
+        U = random.beta(key[0], 2, 4, (n,))
     elif Z == 1:
-        print("Z is 1")
-        U = random.beta(key[0], 5, 2, (n,))
+        U = random.beta(key[0], 4, 2, (n,))
     else:  # Target domain
-        print("Z is 2")
         U = random.beta(key[0], a, b, (n,))
     return U
 

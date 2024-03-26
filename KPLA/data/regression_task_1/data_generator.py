@@ -15,13 +15,10 @@ def gen_U(Z, n, s1, s2, key):
     """Sample U."""
     if Z == 0:
         # Reversed setting (0.1, 0.9), original setting (0.9, 0.1)
-        print("Z is 0")
         U = random.choice(key[0], jnp.arange(2), (n,), p=np.array([0.9, 0.1]))
     elif Z == 1:
-        print("Z is 1")
         U = random.choice(key[0], jnp.arange(2), (n,), p=np.array([0.1, 0.9]))
     else:  # Target domain
-        print("Z is 2")
         U = random.choice(key[0], jnp.arange(2), (n,), p=np.array([s1, s2]))
     return U
 

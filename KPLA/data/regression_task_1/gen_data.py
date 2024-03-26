@@ -16,7 +16,7 @@ from KPLA.data.regression_task_1.data_generator import (
 )
 
 
-def gen_source_data(n, s1, s2, var, mean, seed_list):
+def gen_source_data(n, s1, s2, var, mean, seed_list, reshape_X=False):
     data_list = []
     for env_id, sd in enumerate(seed_list):
         seed1 = sd + 5446
@@ -50,6 +50,8 @@ def gen_source_data(n, s1, s2, var, mean, seed_list):
 
         data["U"] = jnp.array(U)
         data["X"] = jnp.array(X)
+        if reshape_X:
+            data["X"] = data["X"].reshape(-1, 1)
         data["W"] = jnp.array(W)
         data["Z"] = jnp.array(Z)
         data["Y"] = jnp.array(Y)
@@ -58,7 +60,7 @@ def gen_source_data(n, s1, s2, var, mean, seed_list):
     return data_list
 
 
-def gen_target_data(n_env, n, s1, s2, var, mean, seed_list):
+def gen_target_data(n_env, n, s1, s2, var, mean, seed_list, reshape_X=False):
     data_list = []
     for sd in seed_list:
         seed1 = sd + 5446
@@ -92,6 +94,8 @@ def gen_target_data(n_env, n, s1, s2, var, mean, seed_list):
 
         data["U"] = jnp.array(U)
         data["X"] = jnp.array(X)
+        if reshape_X:
+            data["X"] = data["X"].reshape(-1, 1)
         data["W"] = jnp.array(W)
         data["Z"] = jnp.array(Z)
         data["Y"] = jnp.array(Y)
