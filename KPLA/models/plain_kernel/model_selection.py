@@ -220,8 +220,8 @@ def tune_adapt_model_cv(
 
             if verbose:
                 print(
-                    f"update best parameters alpha: {alpha}, \
-                alpha2:{alpha2}, scale: {scale}, err: {np.mean(errs)}\n"
+                    f"update best parameters alpha: {alpha}, alpha2:{alpha2}"
+                    + ", scale: {scale}, err: {np.mean(errs)}\n"
                 )
 
     return best_estimator, best_params
@@ -386,8 +386,8 @@ def tune_multienv_adapt_model_cv(
 
             if verbose:
                 print(
-                    f"update best parameters alpha: {alpha}, alpha2:{alpha2} \
-                    , scale: {scale}, err: {np.mean(errs)}\n"
+                    f"update best parameters alpha: {alpha}, alpha2:{alpha2}"
+                    + ", scale: {scale}, err: {np.mean(errs)}\n"
                 )
 
     return best_estimator, best_params

@@ -256,6 +256,7 @@ class BridgeM0CAT(BridgeM0):
             verbose: verbosity flag, bool
         """
         self.sc = scale
+        self.verbose = verbose
 
         if kernel_dict is None:
             kernel_dict = {}
@@ -464,6 +465,7 @@ class BridgeM0CATCLF(BridgeM0CAT):
         lam_min=-4,
         lam_max=-1,
         kernel_dict=None,
+        verbose=False,
     ):
         """Initialize the parameters
         Args:
@@ -477,8 +479,10 @@ class BridgeM0CATCLF(BridgeM0CAT):
           'original' for linear solver, 'nystrom' for Nystrom approximation
           lam_min: minimum of lambda (log space) for hyperparameter tuning, float
           lam_max: maximum of lambda (log space) for hyperparameter tuning, float
+          verbose: verbosity flag, bool
         """
         self.sc = scale
+        self.verbose = verbose
 
         if kernel_dict is None:
             kernel_dict = {}

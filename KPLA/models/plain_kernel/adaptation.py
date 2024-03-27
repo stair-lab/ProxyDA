@@ -98,7 +98,7 @@ class FullAdapt(KernelMethod):
             lam_max=self.lam_set["lam_max"],
         )
 
-        # estimate cme(W,C|x)
+        # Estimate cme(W,C|x)
         if self.split:
             train_data = domain_data[1]
         else:
@@ -128,7 +128,7 @@ class FullAdapt(KernelMethod):
             lam_max=self.lam_set["lam_max"],
         )
 
-        # estimate h0
+        # Estimate h0
         xlist = cme_w_xc.get_params()["Xlist"]
 
         if self.split:
@@ -222,7 +222,7 @@ class FullAdapt(KernelMethod):
     def evaluation(
         self, task="r", source_data=None, target_data=None, plot=False
     ):
-        """evaluation on data
+        """Evaluation on data
         Args:
           task: 'r' for regression, return MSE, 'c' for classification, return AUCROC, ACC
           source_data: data dict, if None, evaluate the saved data
@@ -231,7 +231,7 @@ class FullAdapt(KernelMethod):
         """
         eval_list = []
         print("start evaluation")
-        # source evaluation
+        # Source evaluation
         source_testx = {}
         if source_data is not None:
             source_testx["X"] = source_data["X"]
@@ -240,7 +240,7 @@ class FullAdapt(KernelMethod):
             source_testx["X"] = self.source_test["X"]
             source_testy = self.source_test["Y"]
 
-        # source on source error
+        # Source on source error
         predict_y = self.predict(source_testx, "source", "source")
 
         ss_error = self.score(predict_y, source_testy, task, thres=self.thre)
@@ -278,7 +278,7 @@ class FullAdapt(KernelMethod):
             plt.hist(predict_y[true_1, 1])
             plt.savefig("ts.png")
 
-        # target evaluation
+        # Target evaluation
         target_testx = {}
         if target_data is not None:
             target_testx["X"] = target_data["X"]
@@ -287,7 +287,7 @@ class FullAdapt(KernelMethod):
             target_testx["X"] = self.target_test["X"]
             target_testy = self.target_test["Y"]
 
-        # target on target errror
+        # Target on target errror
         predict_y = self.predict(target_testx, "target", "target")
         tt_error = self.score(predict_y, target_testy, task, thres=self.thre)
         eval_list.append(
@@ -308,8 +308,7 @@ class FullAdapt(KernelMethod):
             plt.hist(predict_y[true_1, 1])
             plt.savefig("tt.png")
 
-        # source on target error
-
+        # Source on target error
         predict_y = self.predict(target_testx, "source", "source")
         st_error = self.score(predict_y, target_testy, task, thres=self.thre)
         eval_list.append(
@@ -354,7 +353,7 @@ class FullAdapt(KernelMethod):
         return df
 
     def predict(self, test_x, h_domain, cme_domain):
-        """predict.
+        """Predict.
         Args:
           test_x: test covariates, dict
           h_domain: domain of h0, "source" or "target"
