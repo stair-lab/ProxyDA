@@ -2,13 +2,19 @@ import os
 import glob
 import htcondor
 
-jobs_dir = "/home/nschiou2/proxy_latent_shifts/tests/sim_multisource_v2/proposed_results"
+############### EDIT ############################
+CODE_DIR = "/home/nschiou2/proxy_latent_shifts/"
+EXEC = "/home/nschiou2/miniconda3/envs/proxy/bin/python"
+EXPT_DIR = "tests/sim_multisource_bin/"
+############### EDIT ############################
+
+jobs_dir = os.path.join(CODE_DIR, EXPT_DIR, "jobs_proposed")
 os.makedirs(jobs_dir, exist_ok=True)
 
 SCHEDD = htcondor.Schedd()
 
-EXEC = "/home/nschiou2/miniconda3/envs/proxy/bin/python"
-SCRIPT = "/home/nschiou2/proxy_latent_shifts/tests/sim_multisource_v2/test_proposed_onehot.py"
+SCRIPT = os.path.join(CODE_DIR, EXPT_DIR, "test_proposed_onehot.py")
+OUT_DIR = os.path.join(CODE_DIR, EXPT_DIR, "model_select")
 
 req = ""
 req += '(Machine == "vision-21.cs.illinois.edu") || '
@@ -18,23 +24,23 @@ req += '(Machine == "vision-23.cs.illinois.edu") '
 
 params = {
     "var": 1.0,
-    "mean": 0,
+    "mean": 0.0,
+    "fixs": 1.0,
 }
 
 test_set = [params]
 for par in test_set:
-    for seed in [0.8, 0.6, 0.4, 0.2, 0.9, 0.7, 0.5, 0.3, 0.1]:
+    for seed in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
 
         mean = par["mean"]
         var = par["var"]
+        fixs = par["fixs"]
 
-        run_name = f"test_proposed_v2_onehot_{seed}_m_{mean}_var_{var}"
-        fixs = 0
-        if fixs <= 1:
+        run_name = f"test_proposed_onehot_{seed}_m_{mean}_var_{var}"
+        if fixs:
             run_name = run_name + "_fixscale"
 
-        out_dir = f"/home/nschiou2/proxy_latent_shifts/tests/sim_multisource_v2/proposed_results/{run_name}"
-        if len(glob.glob(os.path.join(out_dir, "*.csv"))) > 0:
+        if len(glob.glob(os.path.join(OUT_DIR, run_name, "*.csv"))) > 0:
             print(f"Skipping {run_name}.")
             continue
 
@@ -50,11 +56,14 @@ for par in test_set:
             str(fixs),
             "--fname",
             run_name,
+            "--outdir",
+            OUT_DIR,
         ]
 
         job = {
             "executable": EXEC,
             "arguments": " ".join(arguments),
+            "getenv": True,
             # Reqs
             "request_cpus": "16",
             "request_gpus": "1",

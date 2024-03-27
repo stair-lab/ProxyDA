@@ -7,6 +7,7 @@ Using simulated regression task 1: data generation process (D.3).
 # MIT License
 
 import argparse
+import os
 import pandas as pd
 
 from KPLA.data.regression_task_1.gen_data import (
@@ -27,13 +28,15 @@ parser.add_argument("--s", type=float, default=0.9)
 parser.add_argument("--var", type=float, default=1.0)
 parser.add_argument("--mean", type=float, default=0.0)
 parser.add_argument("--fixs", type=bool, default=False)
+parser.add_argument("--fname", type=str, default="test_proporsed_onehot")
 parser.add_argument("--outdir", type=str, default="./")
+parser.add_argument("--verbose", type=bool, default=False)
 args = parser.parse_args()
 
-out_dir = args.outdir
+os.makedirs(args.outdir, exist_ok=True)
 s1 = args.s
 s2 = 1.0 - args.s
-fname = f"test_proposed_v2_onehot_{s1}_m_{args.mean}_var_{args.var}"
+fname = args.fname
 
 
 ####################
@@ -64,16 +67,6 @@ sd_lst = [
     2297,
 ]
 
-mean_z = [-0.5, 0.0, 0.5, 1.0]
-sigma_z = [1.0, 1.0, 1.0, 1.0]
-
-prob_list = [
-    [1.0, 0.0, 0.0, 0.0],
-    [0.0, 1.0, 0.0, 0.0],
-    [0.0, 0.0, 1.0, 0.0],
-    [0.0, 0.0, 0.0, 1.0],
-]
-
 # Generate data from source domain
 sd_train_list = sd_lst[: args.n_env]
 source_train = gen_source_data(
@@ -92,22 +85,23 @@ target_test = gen_target_data(
 )
 
 
-print("Data generation complete")
-print("Number of source environments:", len(source_train))
-print(
-    "Source_train number of samples: ",
-    source_train[0]["X"].shape[0] * args.n_env,
-)
-print("Source_test  number of samples: ", source_test[0]["X"].shape[0])
-print("Number of target environments:", len(target_train))
-print("Target_train number of samples: ", target_train[0]["X"].shape[0])
-print("Target_test  number of samples: ", target_test[0]["X"].shape[0])
+if args.verbose:
+    print("Data generation complete")
+    print("Number of source environments:", len(source_train))
+    print(
+        "Source_train number of samples: ",
+        source_train[0]["X"].shape[0] * args.n_env,
+    )
+    print("Source_test  number of samples: ", source_test[0]["X"].shape[0])
+    print("Number of target environments:", len(target_train))
+    print("Target_train number of samples: ", target_train[0]["X"].shape[0])
+    print("Target_test  number of samples: ", target_test[0]["X"].shape[0])
 
-# Check shape
-print("X shape", source_train[0]["X"].shape)
-print("Y shape", source_train[0]["Y"].shape)
-print("W shape", source_train[0]["W"].shape)
-print("U shape", source_train[0]["U"].shape)
+    # Check shape
+    print("X shape", source_train[0]["X"].shape)
+    print("Y shape", source_train[0]["Y"].shape)
+    print("W shape", source_train[0]["W"].shape)
+    print("U shape", source_train[0]["U"].shape)
 
 
 ####################
@@ -144,15 +138,11 @@ estimator_full = MultiEnvAdapt(
     lam_set,
     method_set,
     kernel_dict,
+    verbose=args.verbose,
 )
 estimator_full.fit(task="r")
 estimator_full.evaluation(task="r")
 
-if args.fixs <= 1:
-    fix_scale = True
-    fname += "_fixscale"
-else:
-    fix_scale = False
 best_estimator, best_parameter = tune_multienv_adapt_model_cv(
     source_train,
     target_train,
@@ -166,18 +156,18 @@ best_estimator, best_parameter = tune_multienv_adapt_model_cv(
     n_fold=5,
     min_log=-4,
     max_log=3,
-    fix_scale=fix_scale,
+    fix_scale=args.fixs,
+    verbose=args.verbose,
 )
 
 best_parameter["source_nsample"] = args.n
 best_parameter["n_env"] = args.n_env
 
-path = "./"
 df = pd.DataFrame.from_records([best_parameter])
-df.to_csv(path + fname + ".csv")
+df.to_csv(os.path.join(args.outdir, f"{fname}.csv"), index=False)
 
 
-print("Evaluation of best_model")
+# Evaluation of best model
 best_estimator.evaluation(task="r")
 
 best_params = best_estimator.get_params()
@@ -186,8 +176,10 @@ best_scale = best_params["scale"]
 best_method_set = best_params["method_set"]
 best_kernel_dict = best_params["kernel_dict"]
 
-print("best lam:", best_lam_set)
-print("best scale:", best_scale)
+if args.verbose:
+    print("Evaluation of best model")
+    print("best lam:", best_lam_set)
+    print("best scale:", best_scale)
 
 
 estimator_full = MultiEnvAdapt(
@@ -200,8 +192,7 @@ estimator_full = MultiEnvAdapt(
     best_lam_set,
     method_set,
     kernel_dict,
+    verbose=args.verbose,
 )
 estimator_full.fit(task="r")
-
-
 estimator_full.evaluation(task="r")

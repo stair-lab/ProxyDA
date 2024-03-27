@@ -8,6 +8,7 @@ Using simulated regression task 1: data generation process (D.3).
 
 import argparse
 import copy
+import os
 import numpy as np
 import pandas as pd
 
@@ -43,9 +44,9 @@ args = parser.parse_args()
 out_dir = args.outdir
 
 
-main_summary = pd.DataFrame()
-
 for sdj in range(10):
+    main_summary = pd.DataFrame()
+
     for s1 in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
         s2 = 1.0 - s1
 
@@ -76,7 +77,6 @@ for sdj in range(10):
             1009,
             2297,
         ]
-        sd_lst = sd_lst[::-1]
 
         # Generate data from source domain
         sd_train_list = sd_lst[sdj * args.n_env : args.n_env * (sdj + 1)]
@@ -223,9 +223,6 @@ for sdj in range(10):
         if args.verbose:
             print("ERM metrics")
             print(erm_metrics)
-        summary = pd.DataFrame.from_records(metrics)
-        summary["pU=0"] = s1
-        main_summary = pd.concat([main_summary, summary])
 
         #######################
         # Multisource uniform #
@@ -339,7 +336,8 @@ for sdj in range(10):
         best_msa = model_batch[idx]
         best_params = params_batch[idx]
 
-        print("optimal parameters", params_batch[idx])
+        if args.verbose:
+            print("optimal parameters", params_batch[idx])
 
         best_msa.fit(source_train)
 
@@ -367,4 +365,6 @@ for sdj in range(10):
         summary["seed"] = sdj
         main_summary = pd.concat([main_summary, summary])
 
-    main_summary.to_csv(f"sweep_baseline_seed_{sdj}.csv", index=False)
+    main_summary.to_csv(
+        os.path.join(out_dir, f"sweep_baseline_seed_{sdj}.csv"), index=False
+    )

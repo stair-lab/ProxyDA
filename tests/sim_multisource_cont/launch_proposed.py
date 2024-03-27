@@ -1,76 +1,85 @@
 import os
 import glob
-import htcondor
 import itertools
-jobs_dir = "/home/kt14/workbench/proxy_latent_shifts/tests/sim_multisource_cont/proposed_results"
+import htcondor
+
+############### EDIT ############################
+CODE_DIR = "/home/nschiou2/proxy_latent_shifts/"
+EXEC = "/home/nschiou2/miniconda3/envs/proxy/bin/python"
+EXPT_DIR = "tests/sim_multisource_cont/"
+############### EDIT ############################
+
+jobs_dir = os.path.join(CODE_DIR, EXPT_DIR, "jobs_proposed")
 os.makedirs(jobs_dir, exist_ok=True)
 
 SCHEDD = htcondor.Schedd()
 
-EXEC = '/home/kt14/miniconda3/envs/work2/bin/python'
-SCRIPT = "/home/kt14/workbench/proxy_latent_shifts/tests/sim_multisource_cont/test_proposed_onehot.py"
+SCRIPT = os.path.join(CODE_DIR, EXPT_DIR, "test_proposed_onehot.py")
+OUT_DIR = os.path.join(CODE_DIR, EXPT_DIR, "model_select")
 
-req = ''
+req = ""
 req += '(Machine == "vision-21.cs.illinois.edu") || '
 req += '(Machine == "vision-22.cs.illinois.edu") || '
 req += '(Machine == "vision-23.cs.illinois.edu") '
 
 
-
-params = {'var':  1.0,
-          'mean':  0,
+params = {
+    "var": 1.0,
+    "mean": 0.0,
+    "fixs": 1.0,
 }
-a_list = [1, 2, 3, 4, 5] 
-b_list = [1]   
+a_list = [1, 2, 3, 4, 5]
+b_list = [1, 2, 3, 4, 5]
 
-test_set = [params]#, params1, params2, params3]
+test_set = [params]
 for par in test_set:
-  for a,b in itertools.product(a_list, b_list):
-    #seed = 0.8 
-    mean = par['mean']
+    for a, b in itertools.product(a_list, b_list):
 
-    var = par['var']
+        mean = par["mean"]
+        var = par["var"]
+        fixs = par["fixs"]
 
-    run_name = f"test_proposed_v2_onehot_a{a}b{b}"
-    fixs = 0
-    if fixs <= 1:
-      run_name = run_name+"_fixscale"
-    
-    
-    out_dir = f"/home/kt14/workbench/proxy_latent_shifts/tests/sim_multisource_cont/proposed_results/{run_name}"
-    if len(glob.glob(os.path.join(out_dir, '*.csv'))) > 0:
-        print(f"Skipping {run_name}.")
-        continue
-    
-    
-    
-    arguments = [ 
-    f"{SCRIPT}",
-        '--a', str(a),
-        '--b', str(b),
-        '--var', str(par['var']),
-        '--mean', str(par['mean']),
-        '--fixs', str(fixs), 
-        '--fname', run_name
-    ]
+        run_name = f"test_proposed_onehot_a{a}b{b}"
+        if fixs:
+            run_name = run_name + "_fixscale"
 
-    job = {
-        "executable": EXEC,
-        "arguments": ' '.join(arguments),
+        if len(glob.glob(os.path.join(OUT_DIR, run_name, "*.csv"))) > 0:
+            print(f"Skipping {run_name}.")
+            continue
 
-        # reqs
-        "request_cpus": '16',
-        "request_gpus": '1',
-        "requirements": req,
+        arguments = [
+            f"{SCRIPT}",
+            "--a",
+            str(a),
+            "--b",
+            str(b),
+            "--var",
+            str(par["var"]),
+            "--mean",
+            str(par["mean"]),
+            "--fixs",
+            str(fixs),
+            "--fname",
+            run_name,
+            "--outdir",
+            OUT_DIR,
+        ]
 
-        # output files
-        "output": os.path.join(jobs_dir, f'{run_name}.out'),
-        "error": os.path.join(jobs_dir, f'{run_name}.err'),
-        "log": os.path.join(jobs_dir, f'{run_name}.log'),
-    }
+        job = {
+            "executable": EXEC,
+            "arguments": " ".join(arguments),
+            "getenv": True,
+            # Reqs
+            "request_cpus": "16",
+            "request_gpus": "1",
+            "requirements": req,
+            # Output files
+            "output": os.path.join(jobs_dir, f"{run_name}.out"),
+            "error": os.path.join(jobs_dir, f"{run_name}.err"),
+            "log": os.path.join(jobs_dir, f"{run_name}.log"),
+        }
 
-    sub = htcondor.Submit(job)
-    SCHEDD.submit(sub)
+        sub = htcondor.Submit(job)
+        SCHEDD.submit(sub)
 
-    print(f"Submitting {run_name}.")
-    # break
+        print(f"Submitting {run_name}.")

@@ -1,18 +1,16 @@
 """
 Multi-source adaptation with the proposed method and sweep over target domains.
-Using simulated regression task 2.
+Using simulated regression task 1: data generation process (D.3).
 """
 
 # Author: Katherine Tsai <kt14@illinois.edu>, Nicole Chiou <nicchiou@stanford.edu>
 # MIT License
 
-
 import argparse
-import itertools
 import os
 import pandas as pd
 
-from KPLA.data.regression_task_2.gen_data import (
+from KPLA.data.regression_task_1.gen_data import (
     gen_source_data,
     gen_target_data,
 )
@@ -31,8 +29,6 @@ parser.add_argument("--verbose", type=bool, default=False)
 args = parser.parse_args()
 
 out_dir = args.outdir
-os.makedirs(out_dir, exist_ok=True)
-
 out_fname = "sweep_proposed"
 if args.fixs:
     out_fname += "_fixscale"
@@ -41,15 +37,14 @@ file_path = "./model_select/"
 
 main_df = pd.DataFrame()
 
-a_list = [1, 2, 3, 4, 5]
-b_list = [1, 2, 3, 4, 5]
-
 for sdj in range(10):
-    for a, b in itertools.product(a_list, b_list):
-        fname = f"test_proposed_onehot_a{a}b{b}"
+    for s1 in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
+        fname = f"test_proposed_onehot_{s1}_m_{args.mean}_var_{args.var}"
         if args.fixs:
             fname += "_fixscale"
         fname += ".csv"
+
+        s2 = 1.0 - s1
 
         ####################
         # Generate data    #
@@ -82,20 +77,20 @@ for sdj in range(10):
         # Generate data from source domain
         sd_train_list = sd_lst[sdj * args.n_env : args.n_env * (sdj + 1)]
         source_train = gen_source_data(
-            args.n, a, b, args.var, args.mean, sd_train_list
+            args.n, s1, s2, args.var, args.mean, sd_train_list
         )
         # Test set only has 1000 samples
         sd_test_list = sd_lst[(9 - sdj) * args.n_env : args.n_env * (10 - sdj)]
         source_test = gen_source_data(
-            1000, a, b, args.var, args.mean, sd_test_list
+            1000, s1, s2, args.var, args.mean, sd_test_list
         )
 
         # Generate data from target domain
         target_train = gen_target_data(
-            args.n_env, args.n * 2, a, b, args.var, args.mean, [sd_lst[sdj]]
+            args.n_env, args.n * 2, s1, s2, args.var, args.mean, [sd_lst[sdj]]
         )
         target_test = gen_target_data(
-            args.n_env, 1000, a, b, args.var, args.mean, [sd_lst[sdj + 1]]
+            args.n_env, 1000, s1, s2, args.var, args.mean, [sd_lst[sdj + 1]]
         )
 
         if args.verbose:
@@ -123,10 +118,10 @@ for sdj in range(10):
         # Run adaptation   #
         ####################
 
-        lam_set = {"cme": 1e-4, "m0": 1e-4, "lam_min": -4, "lam_max": -1}
+        lam_set = {"cme": 1e-4, "m0": 1e-5, "lam_min": -4, "lam_max": -1}
         method_set = {"cme": "original", "m0": "original"}
 
-        # specity the kernel functions for each estimator
+        # Specify the kernel functions for each estimator
         kernel_dict = {}
 
         X_kernel = "rbf"
@@ -172,8 +167,7 @@ for sdj in range(10):
         estimator_full.fit(task="r")
 
         df = estimator_full.evaluation(task="r")
-        df["a"] = a
-        df["b"] = b
+        df["pU=0"] = s1
 
         main_df = pd.concat([main_df, df])
 
