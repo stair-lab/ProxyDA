@@ -29,6 +29,8 @@ parser.add_argument("--verbose", type=bool, default=False)
 args = parser.parse_args()
 
 out_dir = args.outdir
+os.makedirs(out_dir, exist_ok=True)
+
 out_fname = "sweep_proposed"
 if args.fixs:
     out_fname += "_fixscale"

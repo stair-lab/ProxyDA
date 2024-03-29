@@ -5,7 +5,7 @@ https://github.com/google-research/google-research/tree/master/latent_shift_adap
 """
 
 # Author: Katherine Tsai <kt14@illinois.edu>
-# License: MIT
+# MIT License
 
 import re
 import numpy as np

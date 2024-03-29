@@ -1,4 +1,4 @@
-"""implements the full adaptation pipeline"""
+"""Implements the full adaptation pipeline"""
 
 # Author: Katherine Tsai <kt14@illinois.edu>
 # License: MIT

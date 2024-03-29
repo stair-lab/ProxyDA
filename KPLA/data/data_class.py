@@ -1,7 +1,7 @@
 """Data class of the deep kernel method."""
 
 # Author: Katherine Tsai <kt14@illinois.edu>
-# License: MIT
+# MIT License
 
 from typing import NamedTuple
 import numpy as np

@@ -1,9 +1,7 @@
-"""
-Implementation of label shift adaptation method.
-"""
+"""Implementation of label shift adaptation method."""
 
 # Author: Nicole Chiou <nicchiou@stanford.edu>, Katherine Tsai <kt14@illinois.edu>
-# MIT LICENSE
+# MIT License
 
 
 import numpy as np

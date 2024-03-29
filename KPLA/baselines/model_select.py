@@ -1,9 +1,7 @@
-"""
-Implements model selection for kernel ridge regression.
-"""
+"""Implements model selection for kernel ridge regression."""
 
 # Author: Katherine Tsai <kt14@illinois.edu>
-# License: MIT
+# MIT License
 
 import numpy as np
 from sklearn.model_selection import GridSearchCV, KFold
