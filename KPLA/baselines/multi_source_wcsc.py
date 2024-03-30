@@ -23,13 +23,16 @@ class MultiSourceMMD:
     In Proceedings of the AAAI Conference on Artificial Intelligence.
     """
 
-    def __init__(self, source_data, kernel, kde_kernel, bandwidth=1.0):
+    def __init__(
+        self, source_data, kernel, kde_kernel, bandwidth=1.0, verbose=False
+    ):
 
         self.kernel = kernel  # Kernel for computing MMD
         self.kde_kernel = kde_kernel  # Kernel for KDE
         self.bandwidth = bandwidth
         self.x = [np.asarray(d["X"]) for d in source_data]
         self.y = [np.asarray(d["Y"]) for d in source_data]
+        self.verbose = verbose
 
         self.n_env = len(source_data)
         longy = []
@@ -66,7 +69,8 @@ class MultiSourceMMD:
                             element_a(i, j, k, m)
                         )
 
-        print("construct a_mat")
+        if self.verbose:
+            print("construct a_mat")
         self.a_mat = a_mat
 
         # Construct the density esimator of P_Xi_y
@@ -74,7 +78,8 @@ class MultiSourceMMD:
         for k in range(self.n_label):
             tmp_kde_x_y = self._get_kde_x_y(k)
             kde_x_y.append(tmp_kde_x_y)
-        print("construct KDE")
+        if self.verbose:
+            print("construct KDE")
         self.kde_x_y = kde_x_y
 
         # Values assigned in fit()
@@ -115,7 +120,8 @@ class MultiSourceMMD:
         p_mat = matrix(self.a_mat)
         q_mat = matrix(b)
         sol = solvers.qp(p_mat, q_mat, g_mat, h, A=c_mat, b=d)
-        print("solve beta status:", sol["status"])
+        if self.verbose:
+            print("solve beta status:", sol["status"])
         return np.array(sol["x"])
 
     def fit(self, target_x):
