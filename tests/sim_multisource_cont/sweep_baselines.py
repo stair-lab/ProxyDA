@@ -49,7 +49,7 @@ os.makedirs(out_dir, exist_ok=True)
 a_list = [1, 2, 3, 4, 5]
 b_list = [1, 2, 3, 4, 5]
 
-for sdj in range(5, 10):
+for sdj in range(10):
     main_summary = pd.DataFrame()
 
     for a, b in itertools.product(a_list, b_list):

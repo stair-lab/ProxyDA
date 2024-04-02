@@ -106,13 +106,13 @@ def run_single_loop(params):
         )
 
         msmmd.fit(target_train_list_mmd[0]["X"])
-        ##select parameters from source
+        # Select parameters from source
         acc_err = 0
         for sd in source_train_cv_test:
             acc_err += roc_auc_score(sd["Y"], msmmd.predict(sd["X"])[:, 1])
 
         errs.append(acc_err)
-        ## select parameters from target
+        # Select parameters from target
         if acc_err > best_err_i:
             best_err_i = acc_err
             best_model_i = msmmd

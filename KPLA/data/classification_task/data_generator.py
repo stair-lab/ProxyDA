@@ -13,11 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Generates synthetic data using the generating functions provided in
-`data/data_lsa.py`. The output is written to `./tmp_data` by default.
-"""
-
 import re
 
 import numpy as np
