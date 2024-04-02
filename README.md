@@ -129,7 +129,7 @@ To use `MultiEnvAdaptCAT`, the kernel script is:
 ```
 kernel_dict = {}
 
-kernel_dict['cme_w_xz'] = {'X': KERNEL_X, 'Y': KERNEL_W} #Y is W
+kernel_dict['cme_w_xz'] = {'X': KERNEL_X, 'Y': KERNEL_W} # Y is W
 kernel_dict['cme_w_x']  = {'X': KERNEL_X, 'Y': KERNEL_W} # Y is W
 kernel_dict['m0']       = {'X': KERNEL_X}
 
@@ -162,14 +162,14 @@ from KPLA.models.plain_kernel.multienv_adaptation import  MultiEnvAdaptCAT
 ```
 from KPLA.models.plain_kernel.multienv_adaptation import  MultiEnvAdapt
 estimator_multi_a = MultiEnvAdapt(source_train,
-                                target_train,
-                                source_test,
-                                target_test,
-                                split,
-                                scale,
-                                lam_set,
-                                method_set,
-                                kernel_dict)
+                                  target_train,
+                                  source_test,
+                                  target_test,
+                                  split,
+                                  scale,
+                                  lam_set,
+                                  method_set,
+                                  kernel_dict)
 ```
 5. Model selection using cross-validation or validation set.
 
@@ -177,9 +177,10 @@ estimator_multi_a = MultiEnvAdapt(source_train,
 
 ## Run Experiments
 Navigate the examples in `./tests` directory. 
+
 First execute the model selection program under `./model_selection` then run the program under `./experiments` folder.
 
-
+For the simulated regression tasks, `sim_multisource_bin` and `sim_multisource_cont`, first launch execute the hyperparameter tuning program `test_proposed_onehot.py` for each regression task. Then run the experiments for the baseline (`sweep_baselines.py`) and proposed (`sweep_proposed.py`) methods.
 
 
 
