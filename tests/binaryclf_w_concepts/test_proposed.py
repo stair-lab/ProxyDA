@@ -1,33 +1,36 @@
-"""
-implements model selection for proposed method.
-"""
+"""Implements model selection for proposed method."""
 
-# Author: Katherine Tsai <kt14@illinois.edu>
-# MIT LICENSE
+# Author: Katherine Tsai <kt14@illinois.edu>, Nicole Chiou <nicchiou@stanford.edu>
+# MIT License
 
+import argparse
+import os
 import pandas as pd
 import jax.numpy as jnp
-
 
 from KPLA.models.plain_kernel.adaptation import FullAdapt
 from KPLA.models.plain_kernel.model_selection import tune_adapt_model_cv
 from KPLA.baselines.lsa_kernel import extract_from_df_nested
 
 
-# define parameters
-# load data
-source_path = "./tmp_data"
-w_idx = 1
-seed = 202
+parser = argparse.ArgumentParser()
+parser.add_argument("--source_path", type=str, default="./tmp_data")
+parser.add_argument("--w_idx", type=int, default=1)
+parser.add_argument("--seed", type=int, default=192)
+parser.add_argument("--num_seeds", type=int, default=10)
+parser.add_argument("--outdir", type=str, default="./")
+parser.add_argument("--verbose", type=bool, default=False)
+args = parser.parse_args()
 
+os.makedirs(args.outdir, exist_ok=True)
 
-# parameter selection
+# Parameter selection
 method_set = {
     "cme": "original",
     "h0": "original",
 }
 
-# specity the kernel functions for each estimator
+# Specify the kernel functions for each estimator
 kernel_dict = {}
 
 kernel_dict["cme_w_xc"] = {
@@ -56,19 +59,20 @@ def map_data_to_jax(data_dict):
     return train_data, val_data, test_data
 
 
-def load_data(s_path, w_id, seed, qu=1):
+def load_data(s_path, w_id, seed, qu=1, verbose=False):
     source_df = pd.read_csv(
         f"{s_path}/synthetic_multivariate_num_samples_10000_w_coeff_{w_id}_p_u_0_0.9_{seed}.csv"
     )
     source_data_dict = extract_from_df_nested(source_df)
-    # map data to jnp.array
+    # Map data to jnp.array
     s_train, s_val, s_test = map_data_to_jax(source_data_dict)
 
-    # check label:
-    print("source train number of Y", s_train["Y"].sum(axis=0))
-    print("source test number of Y", s_test["Y"].sum(axis=0))
+    # Check label
+    if verbose:
+        print("source train number of Y", s_train["Y"].sum(axis=0))
+        print("source test number of Y", s_test["Y"].sum(axis=0))
 
-    # load target data
+    # Load target data
     target_df = pd.read_csv(
         f"{s_path}/synthetic_multivariate_num_samples_10000_w_coeff_{w_id}_p_u_0_0.{qu}_{seed}.csv"
     )
@@ -76,14 +80,15 @@ def load_data(s_path, w_id, seed, qu=1):
 
     t_train, t_val, t_test = map_data_to_jax(target_data_dict)
 
-    # check label:
-    print("target train number of Y", t_train["Y"].sum(axis=0))
-    print("target test number of Y", t_test["Y"].sum(axis=0))
+    # Check label
+    if verbose:
+        print("target train number of Y", t_train["Y"].sum(axis=0))
+        print("target test number of Y", t_test["Y"].sum(axis=0))
 
     return s_train, s_val, s_test, t_train, t_val, t_test
 
 
-# load data
+# Load data
 (
     source_train,
     source_val,
@@ -91,9 +96,9 @@ def load_data(s_path, w_id, seed, qu=1):
     target_train,
     target_val,
     target_test,
-) = load_data(source_path, w_idx, seed)
+) = load_data(args.source_path, args.w_idx, args.seed, verbose=args.verbose)
 
-# perform model selection
+# Perform model selection
 best_estimator, best_params = tune_adapt_model_cv(
     source_train,
     target_train,
@@ -102,17 +107,19 @@ best_estimator, best_params = tune_adapt_model_cv(
     method_set,
     kernel_dict,
     FullAdapt,
-    use_validation=False,
-    val_data=source_val,
     task="c",
+    fit_task="c",
     n_params=5,
     min_log=-3,
     max_log=1,
+    verbose=args.verbose,
 )
 
-
 best_estimator.evaluation(task="c")
-print("best params", best_params)
+if args.verbose:
+    print("best params", best_params)
+
+
 lam_set = {
     "cme": best_params["alpha"],
     "h0": best_params["alpha"],
@@ -122,11 +129,8 @@ lam_set = {
 scale = best_params["scale"]
 split = False
 
-## start training
-
-store_path = "./results"
-
-for seed in range(202, 203):
+# Start training
+for seed in range(args.seed, args.seed + args.num_seeds):
     for qu in range(9, 0, -1):
         (
             source_train,
@@ -135,7 +139,9 @@ for seed in range(202, 203):
             target_train,
             target_val,
             target_test,
-        ) = load_data(source_path, w_idx, seed, qu)
+        ) = load_data(
+            args.source_path, args.w_idx, seed, qu, verbose=args.verbose
+        )
 
         estimator_full = FullAdapt(
             source_train,
@@ -151,8 +157,11 @@ for seed in range(202, 203):
 
         estimator_full.fit(task="c")
         df = estimator_full.evaluation(task="c")
+
+        if args.verbose:
+            print("Saving results.")
         df.to_csv(
-            f"{store_path}/kernel_result_w{w_idx}_seed_{seed}_qu{qu}.csv",
+            f"{args.outdir}/kernel_result_w{args.w_idx}_seed_{seed}_qu{qu}.csv",
             sep=",",
             index=False,
             encoding="utf-8",
