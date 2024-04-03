@@ -13,7 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Define simulators for synthetic data for a causal generative process with latent confounders, mediating concepts, and proxies."""
+"""
+Define simulators for synthetic data for a causal generative process with
+latent confounders, mediating concepts, and proxies.
+"""
 
 
 import jax
@@ -552,32 +555,24 @@ def tidy_w(data_dict, w_value):
     return result
 
 
-def from_Z_to_U(z_indicator, pu_lookup=None):
-    if pu_lookup is None:
-        pu_lookup = {
-            0: 0.1,
-            1: 0.2,
-            2: 0.3,
-            3: 0.4,
-            4: 0.5,
-            5: 0.6,
-            6: 0.7,
-            7: 0.8,
-            8: 0.9,
-        }  # index 3 is for the target domain
-        # index 4 is for the target domain
-        # pu_lookup = {0:0.1, 1:0.2, 2:0.3, 3:0.4, 4:0.9} # task1
-        # pu_lookup = {0:0.4, 1:0.5, 2:0.6, 3:0.4, 4:0.9} # task2
-        # pu_lookup = {0:0.7, 1:0.8, 2:0.9, 3:0.4, 4:0.4} # task3
-        # pu_lookup = {0:0.8, 1:0.7, 2:0.6, 3:0.5, 4:0.9}
+def from_Z_to_U(z_indicator, task=None):
+    if task == 1:
+        pu_lookup = {0: 0.1, 1: 0.2, 2: 0.3, 3: 0.4, 4: 0.9}
+    elif task == 2:
+        pu_lookup = {0: 0.4, 1: 0.5, 2: 0.6, 3: 0.4, 4: 0.9}
+    elif task == 3:
+        pu_lookup = {0: 0.7, 1: 0.8, 2: 0.9, 3: 0.4, 4: 0.4}
+    else:
+        raise NotImplementedError("Task not implemented.")
+
     return pu_lookup[z_indicator], len(pu_lookup)
 
 
 def generate_multienv_data(
-    z_indicator, seed, num_samples, partition_dict, param_dict=None
+    z_indicator, seed, num_samples, task, partition_dict, param_dict=None
 ):
 
-    pu_0, z_size = from_Z_to_U(z_indicator)
+    pu_0, z_size = from_Z_to_U(z_indicator, task=task)
     p_u = [pu_0, 1 - pu_0]
     sample_dict = generate_data(
         p_u, seed, num_samples, partition_dict, param_dict=param_dict
