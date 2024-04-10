@@ -85,7 +85,7 @@ class Simulator:
         """
 
         rng = jax.random.PRNGKey(seed)
-        k0, k1, k2 = jax.random.split(rng, 3)
+        _, k0, k1, k2 = jax.random.split(rng, 4)
 
         ## Generate u
         if p_u is None:
