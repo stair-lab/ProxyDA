@@ -41,7 +41,6 @@ p_u = [p_u_0, 1 - p_u_0]
 source_train_list = []
 source_test_list = []
 
-
 source_train_list_mmd = []
 source_test_list_mmd = []
 
@@ -72,8 +71,6 @@ target_train, target_test = gen_multienv_class_discrete_z(
     args.task,
     partition_dict,
 )
-
-
 target_train_list_mmd.append(target_train.copy())
 target_test_list_mmd.append(target_test.copy())
 
