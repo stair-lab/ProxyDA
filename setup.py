@@ -16,7 +16,7 @@ setup(
         "cosde",
         "cvxpy >= 1.4.1",
         "cvxopt >= 1.3.2",
-        "jax >= 0.4.20",
+        "jax >= 0.4.25",
         "jaxlib >= 0.4.25",
         "latent_shift_adaptation >= 0.1.0",
         "pandas >= 2.0.3",
