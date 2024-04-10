@@ -85,20 +85,22 @@ class Simulator:
         """
 
         rng = jax.random.PRNGKey(seed)
-        _, k0, k1 = jax.random.split(rng, 3)
+        k0, k1, k2 = jax.random.split(rng, 3)
 
         ## Generate u
         if p_u is None:
             p_u = self.param_dict["p_u"]
 
-        u = np.random.binomial(1, p_u[1], size=self.param_dict["num_samples"])
+        u = jax.random.bernoulli(
+            k0, p_u[1], shape=(self.param_dict["num_samples"],)
+        ).astype(int)
         u_one_hot = OneHotEncoder(sparse_output=False).fit_transform(
             u.reshape(-1, 1)
         )
 
         ## Generate w
         w = jax.random.multivariate_normal(
-            key=k0,
+            key=k1,
             mean=u_one_hot @ self.param_dict["mu_w_u"],
             cov=np.eye(self.param_dict["k_w"]),
         )
@@ -106,7 +108,7 @@ class Simulator:
 
         ## Generate x
         x = jax.random.multivariate_normal(
-            key=k1,
+            key=k2,
             mean=u_one_hot @ self.param_dict["mu_x_u"],
             cov=np.eye(self.param_dict["k_x"]),
         )
