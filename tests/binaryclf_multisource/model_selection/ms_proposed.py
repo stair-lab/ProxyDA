@@ -5,6 +5,7 @@
 
 
 import argparse
+import os
 import pandas as pd
 
 from KPLA.models.plain_kernel.multienv_adaptation import MultiEnvAdaptCAT
@@ -19,9 +20,15 @@ parser.add_argument("--source_n", type=int, default=4000)
 parser.add_argument("--target_n", type=int, default=12000)
 parser.add_argument("--task", type=int, default=1)
 parser.add_argument("--n_env", type=int, default=3)
+parser.add_argument("--outdir", type=str, default="./results/")
 parser.add_argument("--seed", type=int, default=192)
 parser.add_argument("--verbose", type=bool, default=False)
 args = parser.parse_args()
+
+
+outdir = os.path.join(args.outdir, f"task{args.task}")
+fname = f"classification_model_select_{args.seed}.csv"
+os.makedirs(outdir, exist_ok=True)
 
 partition_dict = {"train": 0.8, "test": 0.2}
 result = {}
@@ -109,7 +116,7 @@ best_parameter["source_nsample"] = args.source_n
 best_parameter["n_env"] = args.n_env
 
 df = pd.DataFrame.from_records([best_parameter])
-df.to_csv("classification_model_select.csv", index=False)
+df.to_csv(os.path.join(outdir, fname), index=False)
 
 
 if args.verbose:

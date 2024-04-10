@@ -10,6 +10,7 @@ In Proceedings of the AAAI Conference on Artificial Intelligence.
 # MIT License
 
 import argparse
+import os
 from itertools import product
 from multiprocessing import Pool, cpu_count
 import time
@@ -35,9 +36,15 @@ parser.add_argument("--source_n", type=int, default=4000)
 parser.add_argument("--target_n", type=int, default=12000)
 parser.add_argument("--task", type=int, default=1)
 parser.add_argument("--n_env", type=int, default=3)
+parser.add_argument("--outdir", type=str, default="./results/")
 parser.add_argument("--seed", type=int, default=192)
 parser.add_argument("--verbose", type=bool, default=False)
 args = parser.parse_args()
+
+
+outdir = os.path.join(args.outdir, f"task{args.task}")
+fname = f"MultisourceWCSC_{args.seed}.csv"
+os.makedirs(outdir, exist_ok=True)
 
 best_params_set = []
 partition_dict = {"train": 0.8, "test": 0.2}
@@ -176,4 +183,4 @@ if args.verbose:
 
 
 summary = pd.DataFrame.from_records(best_params_set)
-summary.to_csv("MultisourceWCSC.csv", index=False)
+summary.to_csv(os.path.join(outdir, fname), index=False)

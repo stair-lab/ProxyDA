@@ -11,6 +11,7 @@ Advances in neural information processing systems, 24.
 
 
 import argparse
+import os
 import time
 from warnings import simplefilter
 from multiprocessing import Pool, cpu_count
@@ -38,10 +39,15 @@ parser.add_argument("--source_n", type=int, default=4000)
 parser.add_argument("--target_n", type=int, default=12000)
 parser.add_argument("--task", type=int, default=1)
 parser.add_argument("--n_env", type=int, default=3)
+parser.add_argument("--outdir", type=str, default="./results/")
 parser.add_argument("--seed", type=int, default=192)
 parser.add_argument("--verbose", type=bool, default=False)
 args = parser.parse_args()
 
+
+outdir = os.path.join(args.outdir, f"task{args.task}")
+fname = f"MultisourceMK_{args.seed}.csv"
+os.makedirs(outdir, exist_ok=True)
 
 best_params_set = []
 
@@ -175,4 +181,4 @@ if args.verbose:
 
 
 summary = pd.DataFrame.from_records(best_params_set)
-summary.to_csv("MultisourceMK.csv", index=False)
+summary.to_csv(os.path.join(outdir, fname), index=False)

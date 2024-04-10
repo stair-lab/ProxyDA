@@ -19,10 +19,13 @@ parser.add_argument("--n_env", type=int, default=3)
 parser.add_argument("--seed", type=int, default=192)
 parser.add_argument("--num_seeds", type=int, default=10)
 parser.add_argument("--file_path", type=str, default="../model_selection/")
-parser.add_argument("--outdir", type=str, default="./")
+parser.add_argument("--outdir", type=str, default="./results/")
 parser.add_argument("--verbose", type=bool, default=False)
 args = parser.parse_args()
 
+
+outdir = os.path.join(args.outdir, f"task{args.task}")
+os.makedirs(outdir, exist_ok=True)
 
 partition_dict = {"train": 0.8, "test": 0.2}
 result = {}
@@ -45,23 +48,25 @@ kernel_dict["cme_w_xz"] = {"X": "rbf", "Y": "rbf_column"}  # Y is W
 kernel_dict["cme_w_x"] = {"X": "rbf", "Y": "rbf_column"}  # Y is W
 kernel_dict["m0"] = {"X": "rbf"}
 
-df = pd.read_csv(args.file_path + "classification_model_select.csv")
-
-best_lam_set = {
-    "cme": df["alpha"].values[0],
-    "m0": df["alpha2"].values[0],
-    "lam_min": -4,
-    "lam_max": -1,
-}
-best_scale = df["scale"].values[0]
-split = False
-
-if args.verbose:
-    print(f"best lam: {best_lam_set}")
-    print(f"best scale: {best_scale}")
-
 
 for seed in range(args.seed, args.seed + args.num_seeds):
+
+    df = pd.read_csv(
+        args.file_path + f"classification_model_select_{seed}.csv"
+    )
+
+    best_lam_set = {
+        "cme": df["alpha"].values[0],
+        "m0": df["alpha2"].values[0],
+        "lam_min": -4,
+        "lam_max": -1,
+    }
+    best_scale = df["scale"].values[0]
+    split = False
+
+    if args.verbose:
+        print(f"best lam: {best_lam_set}")
+        print(f"best scale: {best_scale}")
 
     source_train_list = []
     source_test_list = []
@@ -128,5 +133,5 @@ if args.verbose:
     print(summary)
 
 summary.to_csv(
-    os.path.join(args.outdir, "multienv_classification.csv"), index=False
+    os.path.join(outdir, "multienv_classification.csv"), index=False
 )

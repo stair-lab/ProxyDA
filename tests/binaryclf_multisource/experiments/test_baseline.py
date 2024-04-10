@@ -31,10 +31,13 @@ parser.add_argument("--n_env", type=int, default=3)
 parser.add_argument("--seed", type=int, default=192)
 parser.add_argument("--num_seeds", type=int, default=10)
 parser.add_argument("--file_path", type=str, default="../model_selection/")
-parser.add_argument("--outdir", type=str, default="./")
+parser.add_argument("--outdir", type=str, default="./results/")
 parser.add_argument("--verbose", type=bool, default=False)
 args = parser.parse_args()
 
+
+outdir = os.path.join(args.outdir, f"task{args.task}")
+os.makedirs(outdir, exist_ok=True)
 
 best_params_set = []
 
@@ -120,7 +123,7 @@ for seed in range(args.seed, args.seed + args.num_seeds):
     ###################
     # MS Simple Adapt #
     ###################
-    df = pd.read_csv(args.file_path + "MultisourceSA.csv")
+    df = pd.read_csv(args.file_path + f"MultisourceSA_{seed}.csv")
     bandwidth = df["bandwidth"].values[0]
 
     msa = MultiSouceSimpleAdapt(
@@ -159,7 +162,7 @@ for seed in range(args.seed, args.seed + args.num_seeds):
     ##################
     # MS WCSC        #
     ##################
-    df = pd.read_csv(args.file_path + "MultisourceWCSC.csv")
+    df = pd.read_csv(args.file_path + f"MultisourceWCSC_{seed}.csv")
 
     bandwidth = df["bandwidth"].values[0]
 
@@ -194,7 +197,7 @@ for seed in range(args.seed, args.seed + args.num_seeds):
     ##################
     # MS SVM         #
     ##################
-    df = pd.read_csv(args.file_path + "MultisourceMK.csv")
+    df = pd.read_csv(args.file_path + f"MultisourceMK_{seed}.csv")
 
     p_ker = eval(df["p_kernel"].values[0])
     x_ker = eval(df["x_kernel"].values[0])
@@ -227,6 +230,5 @@ if args.verbose:
     print(df)
 
 df.to_csv(
-    os.path.join(args.outdir, "multienv_classification_baseline.csv"),
-    index=False,
+    os.path.join(outdir, "multienv_classification_baseline.csv"), index=False,
 )
