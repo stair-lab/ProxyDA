@@ -85,7 +85,7 @@ class Simulator:
         """
 
         rng = jax.random.PRNGKey(seed)
-        _, k0, k1, k2 = jax.random.split(rng, 4)
+        _, k0, k1, k2, k3, k4, k5, k6 = jax.random.split(rng, 8)
 
         ## Generate u
         if p_u is None:
@@ -122,14 +122,15 @@ class Simulator:
             + (u_one_hot @ self.param_dict["mu_c_u"]).reshape(
                 -1, self.param_dict["k_c"]
             )
-            + np.random.normal(
-                scale=self.param_dict["sd_c"],
-                size=(self.param_dict["num_samples"], self.param_dict["k_c"]),
+            + jax.random.normal(
+                key=k3,
+                shape=(self.param_dict["num_samples"], self.param_dict["k_c"]),
             ).reshape(-1, self.param_dict["k_c"])
+            * self.param_dict["sd_c"]
         )
-        c = np.random.binomial(n=1, p=scipy.special.expit((c_logits))).reshape(
-            -1, self.param_dict["k_c"]
-        )
+        c = jax.random.bernoulli(
+            key=k4, p=scipy.special.expit((c_logits))
+        ).reshape(-1, self.param_dict["k_c"])
 
         ## Generate y
         y_logits = (
@@ -137,13 +138,14 @@ class Simulator:
                 np.arange(self.param_dict["num_samples"]), np.squeeze(u)
             ].reshape(-1, 1)
             + (u_one_hot @ self.param_dict["mu_y_u"]).reshape(-1, 1)
-            + np.random.normal(
-                scale=self.param_dict["sd_y"],
-                size=self.param_dict["num_samples"],
+            + jax.random.normal(
+                key=k5,
+                shape=(self.param_dict["num_samples"],),
             ).reshape(-1, 1)
+            * self.param_dict["sd_y"]
         )
         y = np.squeeze(
-            np.random.binomial(n=1, p=scipy.special.expit((y_logits)))
+            jax.random.bernoulli(key=k6, p=scipy.special.expit((y_logits)))
         )
         y_one_hot = OneHotEncoder(sparse_output=False).fit_transform(
             y.reshape(-1, 1)
@@ -227,37 +229,6 @@ class MultivariateSimulator(Simulator):
         return param_dict
 
 
-class MixedSimulator(Simulator):
-    """Multivariate X and C. Univariate W. Binary Y."""
-
-    def get_default_param_dict(self):
-        param_dict = {
-            "num_samples": 10000,
-            "k_w": 1,
-            "k_x": 2,
-            "k_c": 3,
-            "k_y": 1,
-            "mu_w_u_coeff": 1,
-            "mu_x_u_coeff": 1,
-            "mu_y_u_coeff": 2,
-            "mu_y_c_coeff": 2,
-            "mu_c_u_coeff": 1,
-            "mu_c_x_coeff": 3,
-            "mu_w_u_mat": np.array([[-1, 1]]).T,
-            "mu_x_u_mat": np.array([[-1, 1], [1, -1]]),  # k_u x k_x
-            "mu_c_u_mat": np.array([[-2, 2, 2], [-1, 1, 2]]),  # k_u x k_c
-            "mu_c_x_mat": np.array(
-                [[[-2, 2, -1], [1, -2, -3]], [[2, -2, 1], [-1, 2, 3]]]
-            ),  # k_u x k_x x k_c
-            "mu_y_c_mat": np.array([[3, -2, -1], [3, -1, -2]]),  # k_u x k_c
-            "mu_y_u_mat": np.array([[1, 1]]).T,  # k_u x 1
-            "sd_c": 0.0,
-            "sd_y": 0.0,
-            "p_u": [0.5, 0.5],
-        }
-        return param_dict
-
-
 class MultiWSimulator(Simulator):
     """Generates data with multiple settings for the proxy variable W, holding other variables fixed."""
 
@@ -288,13 +259,15 @@ class MultiWSimulator(Simulator):
         """
         result = {}
         rng = jax.random.PRNGKey(seed)
-        _, k0, k1 = jax.random.split(rng, 3)
+        _, k0, k1, k2, k3, k4, k5, k6 = jax.random.split(rng, 8)
 
         ## Generate u
         if p_u is None:
             p_u = self.param_dict["p_u"]
 
-        u = np.random.binomial(1, p_u[1], size=self.param_dict["num_samples"])
+        u = jax.random.bernoulli(
+            key=k0, p=p_u[1], shape=(self.param_dict["num_samples"],)
+        ).astype(int)
         u_one_hot = OneHotEncoder(sparse_output=False).fit_transform(
             u.reshape(-1, 1)
         )
@@ -302,7 +275,7 @@ class MultiWSimulator(Simulator):
         ## Generate w
         for mu_w_u_coeff in self.param_dict["mu_w_u_coeff_list"]:
             w = jax.random.multivariate_normal(
-                key=k0,
+                key=k1,
                 mean=u_one_hot @ self.param_dict[f"mu_w_u_{mu_w_u_coeff}"],
                 cov=np.eye(self.param_dict["k_w"]),
             )
@@ -310,7 +283,7 @@ class MultiWSimulator(Simulator):
 
         ## Generate x
         x = jax.random.multivariate_normal(
-            key=k1,
+            key=k2,
             mean=u_one_hot @ self.param_dict["mu_x_u"],
             cov=np.eye(self.param_dict["k_x"]),
         )
@@ -324,14 +297,15 @@ class MultiWSimulator(Simulator):
             + (u_one_hot @ self.param_dict["mu_c_u"]).reshape(
                 -1, self.param_dict["k_c"]
             )
-            + np.random.normal(
-                scale=self.param_dict["sd_c"],
-                size=(self.param_dict["num_samples"], self.param_dict["k_c"]),
+            + jax.random.normal(
+                key=k3,
+                shape=(self.param_dict["num_samples"], self.param_dict["k_c"]),
             ).reshape(-1, self.param_dict["k_c"])
+            * self.param_dict["sd_c"]
         )
-        c = np.random.binomial(n=1, p=scipy.special.expit((c_logits))).reshape(
-            -1, self.param_dict["k_c"]
-        )
+        c = jax.random.bernoulli(
+            key=k4, p=scipy.special.expit((c_logits))
+        ).reshape(-1, self.param_dict["k_c"])
 
         ## Generate y
         y_logits = (
@@ -339,144 +313,14 @@ class MultiWSimulator(Simulator):
                 np.arange(self.param_dict["num_samples"]), np.squeeze(u)
             ].reshape(-1, 1)
             + (u_one_hot @ self.param_dict["mu_y_u"]).reshape(-1, 1)
-            + np.random.normal(
-                scale=self.param_dict["sd_y"],
-                size=self.param_dict["num_samples"],
+            + jax.random.normal(
+                key=k5,
+                shape=(self.param_dict["num_samples"],),
             ).reshape(-1, 1)
+            * self.param_dict["sd_y"]
         )
         y = np.squeeze(
-            np.random.binomial(n=1, p=scipy.special.expit((y_logits)))
-        )
-        y_one_hot = OneHotEncoder(sparse_output=False).fit_transform(
-            y.reshape(-1, 1)
-        )
-
-        return result | {
-            "u": u,
-            "x": x,
-            "c": c,
-            "c_logits": c_logits,
-            "y": y,
-            "y_logits": y_logits,
-            "y_one_hot": y_one_hot,
-        }
-
-    def get_default_param_dict(self):
-        param_dict = {
-            "num_samples": 10000,
-            "k_w": 1,
-            "k_x": 2,
-            "k_c": 3,
-            "k_y": 1,
-            "mu_w_u_coeff_list": [1, 2, 3],
-            "mu_x_u_coeff": 1,
-            "mu_y_u_coeff": 2,
-            "mu_y_c_coeff": 2,
-            "mu_c_u_coeff": 1,
-            "mu_c_x_coeff": 3,
-            "mu_w_u_mat": np.array([[-1, 1]]).T,
-            "mu_x_u_mat": np.array([[-1, 1], [1, -1]]),  # k_u x k_x
-            "mu_c_u_mat": np.array([[-2, 2, 2], [-1, 1, 2]]),  # k_u x k_c
-            "mu_c_x_mat": np.array(
-                [[[-2, 2, -1], [1, -2, -3]], [[2, -2, 1], [-1, 2, 3]]]
-            ),  # k_u x k_x x k_c
-            "mu_y_c_mat": np.array([[3, -2, -1], [3, -1, -2]]),  # k_u x k_c
-            "mu_y_u_mat": np.array([[1, 1]]).T,  # k_u x 1
-            "sd_c": 0.0,
-            "sd_y": 0.0,
-            "p_u": [0.5, 0.5],
-        }
-        return param_dict
-
-
-class MultiEnvMultiWSimulator(Simulator):
-    """Generates data with multiple settings for the proxy variable W, holding other variables fixed."""
-
-    def initialize(self):
-        """Helper function for initializing simulation parameters.
-
-        Multiples {prefix}_coeff * {prefix}_mat, modifying self.param_dict
-        """
-        for key in ["mu_x_u", "mu_y_c", "mu_y_u", "mu_c_u", "mu_c_x"]:
-            self.param_dict[key] = (
-                self.param_dict[f"{key}_coeff"] * self.param_dict[f"{key}_mat"]
-            )
-
-        for mu_w_u_coeff in self.param_dict["mu_w_u_coeff_list"]:
-            self.param_dict[f"mu_w_u_{mu_w_u_coeff}"] = (
-                mu_w_u_coeff * self.param_dict["mu_w_u_mat"]
-            )
-
-    def get_samples(self, p_u=None, seed=42):
-        """Generates samples from the simulation.
-
-        Arguments:
-          p_u: array that specifies the mixture proportions over latent categories u
-          seed: a random seed
-
-        Returns:
-          a dict containing generated data
-        """
-        result = {}
-        rng = jax.random.PRNGKey(seed)
-        _, k0, k1 = jax.random.split(rng, 3)
-
-        ## Generate u
-        if p_u is None:
-            p_u = self.param_dict["p_u"]
-
-        u = np.random.binomial(1, p_u[1], size=self.param_dict["num_samples"])
-        u_one_hot = OneHotEncoder(sparse_output=False).fit_transform(
-            u.reshape(-1, 1)
-        )
-
-        ## Generate w
-        for mu_w_u_coeff in self.param_dict["mu_w_u_coeff_list"]:
-            w = jax.random.multivariate_normal(
-                key=k0,
-                mean=u_one_hot @ self.param_dict[f"mu_w_u_{mu_w_u_coeff}"],
-                cov=np.eye(self.param_dict["k_w"]),
-            )
-            result[f"w_{mu_w_u_coeff}"] = np.array(w).astype(np.float64)
-
-        ## Generate x
-        x = jax.random.multivariate_normal(
-            key=k1,
-            mean=u_one_hot @ self.param_dict["mu_x_u"],
-            cov=np.eye(self.param_dict["k_x"]),
-        )
-        x = np.array(x).astype(np.float64)
-
-        ## Generate c (binary or multilabel, depending on dimensionality of c)
-        c_logits = (
-            x.dot(self.param_dict["mu_c_x"])[
-                np.arange(self.param_dict["num_samples"]), np.squeeze(u), :
-            ]
-            + (u_one_hot @ self.param_dict["mu_c_u"]).reshape(
-                -1, self.param_dict["k_c"]
-            )
-            + np.random.normal(
-                scale=self.param_dict["sd_c"],
-                size=(self.param_dict["num_samples"], self.param_dict["k_c"]),
-            ).reshape(-1, self.param_dict["k_c"])
-        )
-        c = np.random.binomial(n=1, p=scipy.special.expit((c_logits))).reshape(
-            -1, self.param_dict["k_c"]
-        )
-
-        ## Generate y
-        y_logits = (
-            c.dot(self.param_dict["mu_y_c"].T)[
-                np.arange(self.param_dict["num_samples"]), np.squeeze(u)
-            ].reshape(-1, 1)
-            + (u_one_hot @ self.param_dict["mu_y_u"]).reshape(-1, 1)
-            + np.random.normal(
-                scale=self.param_dict["sd_y"],
-                size=self.param_dict["num_samples"],
-            ).reshape(-1, 1)
-        )
-        y = np.squeeze(
-            np.random.binomial(n=1, p=scipy.special.expit((y_logits)))
+            jax.random.bernoulli(key=k6, p=scipy.special.expit((y_logits)))
         )
         y_one_hot = OneHotEncoder(sparse_output=False).fit_transform(
             y.reshape(-1, 1)
