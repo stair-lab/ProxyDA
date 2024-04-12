@@ -23,11 +23,66 @@ from KPLA.data.data_generator import gen_multienv_class_discrete_z
 from KPLA.models.plain_kernel.method import soft_accuracy, log_loss64
 
 
+def load_data(s_path, seed):
+
+    source_train_list = []
+    source_test_list = []
+
+    source_train_list_mmd = []
+    source_test_list_mmd = []
+
+    for z_env in range(args.n_env):
+        source_train = np.load(
+            f"{s_path}/source_{z_env}_seed{seed}_train.npy",
+            allow_pickle=True,
+        ).item()
+        source_test = np.load(
+            f"{s_path}/source_{z_env}_seed{seed}_test.npy",
+            allow_pickle=True,
+        ).item()
+        source_train_list_mmd.append(source_train.copy())
+        source_test_list_mmd.append(source_test.copy())
+
+        source_train["Y"] = source_train["Y_one_hot"]
+        source_test["Y"] = source_test["Y_one_hot"]
+
+        source_train_list.append(source_train)
+        source_test_list.append(source_test)
+
+    target_train_list = []
+    target_test_list = []
+
+    target_train_list_mmd = []
+    target_test_list_mmd = []
+
+    target_train = np.load(
+        f"{s_path}/target_seed{seed}_train.npy",
+        allow_pickle=True,
+    ).item()
+    target_test = np.load(
+        f"{s_path}/target_seed{seed}_test.npy",
+        allow_pickle=True,
+    ).item()
+    target_train_list_mmd.append(target_train.copy())
+    target_test_list_mmd.append(target_test.copy())
+
+    return (
+        source_train_list,
+        source_test_list,
+        source_train_list_mmd,
+        source_test_list_mmd,
+        target_train_list_mmd,
+        target_test_list_mmd,
+    )
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--source_n", type=int, default=4000)
 parser.add_argument("--target_n", type=int, default=12000)
 parser.add_argument("--task", type=int, default=1)
 parser.add_argument("--n_env", type=int, default=3)
+parser.add_argument("--load_data", type=bool, default=True)
+parser.add_argument("--source_path", type=str, default="../tmp_data")
 parser.add_argument("--seed", type=int, default=192)
 parser.add_argument("--num_seeds", type=int, default=10)
 parser.add_argument("--file_path", type=str, default="../model_selection/")
@@ -39,46 +94,58 @@ args = parser.parse_args()
 outdir = os.path.join(args.outdir, f"task{args.task}")
 os.makedirs(outdir, exist_ok=True)
 
-best_params_set = []
-
-partition_dict = {"train": 0.8, "test": 0.2}
 result = {}
-
-# Generate source with 3 environments
-p_u_0 = 0.9
-p_u = [p_u_0, 1 - p_u_0]
-
-
 metrics = []
+
 
 for seed in range(args.seed, args.seed + args.num_seeds):
 
-    source_train_list = []
-    source_test_list = []
-
-    source_train_list_mmd = []
-    source_test_list_mmd = []
-
-    for z_env in range(args.n_env):
-        source_train, source_test = gen_multienv_class_discrete_z(
-            z_env, seed + z_env, args.source_n, args.task, partition_dict
+    if args.load_data:
+        (
+            source_train_list,
+            source_test_list,
+            source_train_list_mmd,
+            source_test_list_mmd,
+            target_train_list_mmd,
+            target_test_list_mmd,
+        ) = load_data(
+            os.path.join(args.source_path, f"task_{args.task}", f"seed{seed}"),
+            seed=seed,
         )
-        source_train_list_mmd.append(source_train.copy())
-        source_test_list_mmd.append(source_test.copy())
 
-    target_train_list_mmd = []
-    target_test_list_mmd = []
+    else:
+        partition_dict = {"train": 0.8, "test": 0.2}
 
-    target_train, target_test = gen_multienv_class_discrete_z(
-        args.n_env + 1,
-        seed + args.n_env + 1,
-        args.target_n,
-        args.task,
-        partition_dict,
-    )
+        # Generate source with 3 environments
+        p_u_0 = 0.9
+        p_u = [p_u_0, 1 - p_u_0]
 
-    target_train_list_mmd.append(target_train.copy())
-    target_test_list_mmd.append(target_test.copy())
+        source_train_list = []
+        source_test_list = []
+
+        source_train_list_mmd = []
+        source_test_list_mmd = []
+
+        for z_env in range(args.n_env):
+            source_train, source_test = gen_multienv_class_discrete_z(
+                z_env, seed + z_env, args.source_n, args.task, partition_dict
+            )
+            source_train_list_mmd.append(source_train.copy())
+            source_test_list_mmd.append(source_test.copy())
+
+        target_train_list_mmd = []
+        target_test_list_mmd = []
+
+        target_train, target_test = gen_multienv_class_discrete_z(
+            args.n_env + 1,
+            seed + args.n_env + 1,
+            args.target_n,
+            args.task,
+            partition_dict,
+        )
+
+        target_train_list_mmd.append(target_train.copy())
+        target_test_list_mmd.append(target_test.copy())
 
     ##################
     # MS Uniform     #
@@ -100,7 +167,7 @@ for seed in range(args.seed, args.seed + args.num_seeds):
     m = {"approach": "MLP uniform", "seed": seed, "acc": err2, "aucroc": err3}
     metrics.append(m)
 
-    ##################
+    ##############
     # MS Cat         #
     ##################
     msc = MultiSourceCat(max_iter=300)
@@ -230,5 +297,6 @@ if args.verbose:
     print(df)
 
 df.to_csv(
-    os.path.join(outdir, "multienv_classification_baseline.csv"), index=False,
+    os.path.join(outdir, "multienv_classification_baseline.csv"),
+    index=False,
 )
