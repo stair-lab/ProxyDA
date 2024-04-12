@@ -22,7 +22,12 @@ class MultiSourceMK:
     """
 
     def __init__(self, p_kernel, x_kernel, max_iter=300):
-        self.svc = SGDClassifier(max_iter=max_iter, tol=1e-3, loss="hinge")
+        self.svc = SGDClassifier(
+            max_iter=max_iter,
+            tol=1e-3,
+            loss="hinge",
+            random_state=1,
+        )
         self.p_kernel = p_kernel  # Kernel to compute the probability distance
         self.x_kernel = x_kernel
 
