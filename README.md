@@ -11,7 +11,7 @@ KPLA requires:
 - latent_shift_adaptation [download link](https://github.com/google-research/google-research/tree/master/latent_shift_adaptation/latent_shift_adaptation)
 - cvxpy (>= 1.4.1)
 - cvxopt (>= 1.3.2)
-- jax (>= 0.4.20)
+- jax (>= 0.4.25)
 - pandas (>= 2.0.3)
 - matplotlib (>= 3.7.2)
 - numpy (>= 1.24.3)
