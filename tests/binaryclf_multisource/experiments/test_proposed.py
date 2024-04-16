@@ -83,6 +83,7 @@ parser.add_argument("--source_path", type=str, default="../tmp_data")
 parser.add_argument("--seed", type=int, default=192)
 parser.add_argument("--num_seeds", type=int, default=10)
 parser.add_argument("--file_path", type=str, default="../model_selection/")
+parser.add_argument("--ms_seed", type=int, default=200)
 parser.add_argument("--outdir", type=str, default="./results/")
 parser.add_argument("--verbose", type=bool, default=False)
 args = parser.parse_args()
@@ -109,7 +110,7 @@ kernel_dict["m0"] = {"X": "rbf"}
 for seed in range(args.seed, args.seed + args.num_seeds):
 
     df = pd.read_csv(
-        args.file_path + f"classification_model_select_{seed}.csv"
+        args.file_path + f"classification_model_select_{args.ms_seed}.csv"
     )
 
     best_lam_set = {

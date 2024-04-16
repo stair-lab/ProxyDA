@@ -49,9 +49,6 @@ def load_data(s_path, seed):
         source_train_list.append(source_train)
         source_test_list.append(source_test)
 
-    target_train_list = []
-    target_test_list = []
-
     target_train_list_mmd = []
     target_test_list_mmd = []
 
@@ -86,6 +83,7 @@ parser.add_argument("--source_path", type=str, default="../tmp_data")
 parser.add_argument("--seed", type=int, default=192)
 parser.add_argument("--num_seeds", type=int, default=10)
 parser.add_argument("--file_path", type=str, default="../model_selection/")
+parser.add_argument("--ms_seed", type=int, default=200)
 parser.add_argument("--outdir", type=str, default="./results/")
 parser.add_argument("--verbose", type=bool, default=False)
 args = parser.parse_args()
@@ -167,7 +165,7 @@ for seed in range(args.seed, args.seed + args.num_seeds):
     m = {"approach": "MLP uniform", "seed": seed, "acc": err2, "aucroc": err3}
     metrics.append(m)
 
-    ##############
+    ##################
     # MS Cat         #
     ##################
     msc = MultiSourceCat(max_iter=300)
@@ -190,7 +188,7 @@ for seed in range(args.seed, args.seed + args.num_seeds):
     ###################
     # MS Simple Adapt #
     ###################
-    df = pd.read_csv(args.file_path + f"MultisourceSA_{seed}.csv")
+    df = pd.read_csv(args.file_path + f"MultisourceSA_{args.ms_seed}.csv")
     bandwidth = df["bandwidth"].values[0]
 
     msa = MultiSouceSimpleAdapt(
@@ -229,7 +227,7 @@ for seed in range(args.seed, args.seed + args.num_seeds):
     ##################
     # MS WCSC        #
     ##################
-    df = pd.read_csv(args.file_path + f"MultisourceWCSC_{seed}.csv")
+    df = pd.read_csv(args.file_path + f"MultisourceWCSC_{args.ms_seed}.csv")
 
     bandwidth = df["bandwidth"].values[0]
 
@@ -264,7 +262,7 @@ for seed in range(args.seed, args.seed + args.num_seeds):
     ##################
     # MS SVM         #
     ##################
-    df = pd.read_csv(args.file_path + f"MultisourceMK_{seed}.csv")
+    df = pd.read_csv(args.file_path + f"MultisourceMK_{args.ms_seed}.csv")
 
     p_ker = eval(df["p_kernel"].values[0])
     x_ker = eval(df["x_kernel"].values[0])
