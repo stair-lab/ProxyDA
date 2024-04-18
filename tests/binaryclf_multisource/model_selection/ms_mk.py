@@ -78,11 +78,11 @@ parser.add_argument("--source_n", type=int, default=4000)
 parser.add_argument("--target_n", type=int, default=12000)
 parser.add_argument("--task", type=int, default=1)
 parser.add_argument("--n_env", type=int, default=3)
-parser.add_argument("--load_data", type=bool, default=True)
+parser.add_argument("--load_data", type=int, default=1)
 parser.add_argument("--source_path", type=str, default="../tmp_data")
 parser.add_argument("--outdir", type=str, default="./results/")
 parser.add_argument("--seed", type=int, default=192)
-parser.add_argument("--verbose", type=bool, default=False)
+parser.add_argument("--verbose", type=int, default=0)
 args = parser.parse_args()
 
 
