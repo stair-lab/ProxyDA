@@ -83,7 +83,7 @@ parser.add_argument("--source_path", type=str, default="../tmp_data")
 parser.add_argument("--seed", type=int, default=192)
 parser.add_argument("--num_seeds", type=int, default=10)
 parser.add_argument("--file_path", type=str, default="../model_selection/")
-parser.add_argument("--ms_seed", type=int, default=200)
+parser.add_argument("--ms_seed", type=int, default=None)
 parser.add_argument("--outdir", type=str, default="./results/")
 parser.add_argument("--verbose", type=int, default=0)
 args = parser.parse_args()
@@ -115,9 +115,6 @@ for seed in range(args.seed, args.seed + args.num_seeds):
         partition_dict = {"train": 0.8, "test": 0.2}
 
         # Generate source with 3 environments
-        p_u_0 = 0.9
-        p_u = [p_u_0, 1 - p_u_0]
-
         source_train_list = []
         source_test_list = []
 
@@ -144,6 +141,8 @@ for seed in range(args.seed, args.seed + args.num_seeds):
 
         target_train_list_mmd.append(target_train.copy())
         target_test_list_mmd.append(target_test.copy())
+
+    model_select_seed = seed if args.ms_seed is None else args.ms_seed
 
     ##################
     # MS Uniform     #
@@ -188,7 +187,13 @@ for seed in range(args.seed, args.seed + args.num_seeds):
     ###################
     # MS Simple Adapt #
     ###################
-    df = pd.read_csv(args.file_path + f"MultisourceSA_{args.ms_seed}.csv")
+    df = pd.read_csv(
+        os.path.join(
+            args.file_path,
+            f"task{args.task}",
+            f"MultisourceSA_{model_select_seed}.csv",
+        )
+    )
     bandwidth = df["bandwidth"].values[0]
 
     msa = MultiSouceSimpleAdapt(
@@ -227,7 +232,13 @@ for seed in range(args.seed, args.seed + args.num_seeds):
     ##################
     # MS WCSC        #
     ##################
-    df = pd.read_csv(args.file_path + f"MultisourceWCSC_{args.ms_seed}.csv")
+    df = pd.read_csv(
+        os.path.join(
+            args.file_path,
+            f"task{args.task}",
+            f"MultisourceWCSC_{model_select_seed}.csv",
+        )
+    )
 
     bandwidth = df["bandwidth"].values[0]
 
@@ -262,7 +273,13 @@ for seed in range(args.seed, args.seed + args.num_seeds):
     ##################
     # MS SVM         #
     ##################
-    df = pd.read_csv(args.file_path + f"MultisourceMK_{args.ms_seed}.csv")
+    df = pd.read_csv(
+        os.path.join(
+            args.file_path,
+            f"task{args.task}",
+            f"MultisourceMK_{model_select_seed}.csv",
+        )
+    )
 
     p_ker = eval(df["p_kernel"].values[0])
     x_ker = eval(df["x_kernel"].values[0])

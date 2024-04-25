@@ -118,9 +118,6 @@ else:
     partition_dict = {"train": 0.8, "test": 0.2}
 
     # Generate source with 3 environments
-    p_u_0 = 0.9
-    p_u = [p_u_0, 1 - p_u_0]
-
     source_train_list = []
     source_test_list = []
 
