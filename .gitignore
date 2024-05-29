@@ -3,7 +3,11 @@ __pycache__
 *.sub
 *.csv
 **/model_select/
-**/tmp_data/
+**/tmp_data**/
+**/results**/
+**/logs/
+*.sh
+*.zip
 
 # Python egg metadata, regenerated from source files by setuptools.
 **/*.egg-info
