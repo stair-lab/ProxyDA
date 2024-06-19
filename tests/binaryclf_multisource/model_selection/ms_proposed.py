@@ -98,7 +98,6 @@ os.makedirs(outdir, exist_ok=True)
 result = {}
 
 if args.load_data:
-    print('load data')
     (
         source_train_list,
         source_test_list,
@@ -172,7 +171,6 @@ kernel_dict["cme_w_xz"] = {"X": "rbf_no_modist", "Y": "rbf_column_no_modist"}  #
 kernel_dict["cme_w_x"] = {"X": "rbf_no_modist", "Y": "rbf_column_no_modist"}  # Y is W
 kernel_dict["m0"] = {"X": "rbf_no_modist"}
 
-print('finish loading')
 best_estimator, best_parameter = tune_multienv_adapt_model_cv(
     source_train_list,
     target_train_list,
