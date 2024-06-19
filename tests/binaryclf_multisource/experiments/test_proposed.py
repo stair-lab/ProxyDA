@@ -102,9 +102,9 @@ method_set = {"cme": "original", "m0": "original"}
 # Specify the kernel functions for each estimator
 kernel_dict = {}
 
-kernel_dict["cme_w_xz"] = {"X": "rbf", "Y": "rbf_column"}  # Y is W
-kernel_dict["cme_w_x"] = {"X": "rbf", "Y": "rbf_column"}  # Y is W
-kernel_dict["m0"] = {"X": "rbf"}
+kernel_dict["cme_w_xz"] = {"X": "rbf_no_modist", "Y": "rbf_column_no_modist"}  # Y is W
+kernel_dict["cme_w_x"] = {"X": "rbf_no_modist", "Y": "rbf_column_no_modist"}  # Y is W
+kernel_dict["m0"] = {"X": "rbf_no_modist"}
 
 
 for seed in range(args.seed, args.seed + args.num_seeds):

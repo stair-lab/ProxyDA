@@ -83,7 +83,7 @@ parser.add_argument("--target_n", type=int, default=12000)
 parser.add_argument("--task", type=int, default=1)
 parser.add_argument("--n_env", type=int, default=3)
 parser.add_argument("--load_data", type=int, default=1)
-parser.add_argument("--source_path", type=str, default="../tmp_data")
+parser.add_argument("--source_path", type=str, default="../data")
 parser.add_argument("--outdir", type=str, default="./results/")
 parser.add_argument("--seed", type=int, default=192)
 parser.add_argument("--verbose", type=int, default=0)
@@ -98,6 +98,7 @@ os.makedirs(outdir, exist_ok=True)
 result = {}
 
 if args.load_data:
+    print('load data')
     (
         source_train_list,
         source_test_list,
@@ -115,6 +116,7 @@ if args.load_data:
     )
 
 else:
+
     partition_dict = {"train": 0.8, "test": 0.2}
 
     # Generate source with 3 environments
@@ -160,18 +162,17 @@ else:
     target_train_list.append(target_train)
     target_test_list.append(target_test)
 
-
 lam_set = {"cme": 1e-3, "m0": 1e-3, "lam_min": -4, "lam_max": -1}
 method_set = {"cme": "original", "m0": "original"}
 
 # Specify the kernel functions for each estimator
 kernel_dict = {}
 
-kernel_dict["cme_w_xz"] = {"X": "rbf", "Y": "rbf_column"}  # Y is W
-kernel_dict["cme_w_x"] = {"X": "rbf", "Y": "rbf_column"}  # Y is W
-kernel_dict["m0"] = {"X": "rbf"}
+kernel_dict["cme_w_xz"] = {"X": "rbf_no_modist", "Y": "rbf_column_no_modist"}  # Y is W
+kernel_dict["cme_w_x"] = {"X": "rbf_no_modist", "Y": "rbf_column_no_modist"}  # Y is W
+kernel_dict["m0"] = {"X": "rbf_no_modist"}
 
-
+print('finish loading')
 best_estimator, best_parameter = tune_multienv_adapt_model_cv(
     source_train_list,
     target_train_list,
