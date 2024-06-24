@@ -133,7 +133,7 @@ class ConditionalMeanEmbed:
         return out_dict
 
     def get_mean_embed(self, new_x):
-        """Dompute the mean embedding given new_x C(Y|new_x).
+        """Compute the mean embedding given new_x C(Y|new_x).
 
         Args:
             new_x: independent varaibles,

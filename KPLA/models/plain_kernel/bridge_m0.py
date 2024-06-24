@@ -116,7 +116,6 @@ class BridgeM0:
                 f"Time: matrix preparation:{t2-t1} solve inverse:{t25-t2}, {t3-t25}"
             )
         self.alpha = vec_alpha.reshape((-1, n_sample))
-        # shape=(n1_sample, n2_sample)
 
     def model_select(self, n_sample, ker_ww, ker_xx, gamma_zx, y):
 
@@ -378,9 +377,8 @@ class BridgeM0CLF(BridgeM0):
         assert set(params["Xlist"]) == set(covars.keys())
         # Construct Gamma_xc matrix
         gamma_xz = cme_w_xz.get_mean_embed(covars)["Gamma"]
-        # shape = (n1_samples, n2_samples)
 
-        # Donstruct sigma
+        # Construct sigma
         sigma = hadamard_prod(
             mat_mul(mat_mul(gamma_xz.T, ker_ww), gamma_xz), ker_xx
         )
