@@ -6,12 +6,6 @@ __pycache__
 *.sh
 *.pdf
 **/model_select/
-**/jobs_proposed/
-**/tmp_data/
-**/results/
-*.err
-*.log
-*.out
 
 # Python egg metadata, regenerated from source files by setuptools.
 **/*.egg-info

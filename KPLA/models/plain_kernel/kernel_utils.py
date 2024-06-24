@@ -84,6 +84,16 @@ def rbf_ker(x, y, scale=1):
 
     return ker
 
+@jax.jit
+def rbf_ker_no_modist(x,y,scale=1):
+    dist_mat=dist_func(l2_dist, x, y)
+
+    coef = 1/x.shape[1] if len(x.shape) > 1 else 1
+    coef *= scale 
+    coef *= 0.5
+    K = jnp.exp(-coef*dist_mat)
+
+    return K
 
 # @jax.jit
 def rbf_ker_equal(x, y, scale=1):
@@ -91,6 +101,11 @@ def rbf_ker_equal(x, y, scale=1):
     ker = fill_diagonal(ker, 1.0)
     return ker
 
+# @jax.jit
+def rbf_ker_equal_no_modist(x, y, scale=1):
+    ker = rbf_ker_no_modist(x, y, scale)
+    ker = fill_diagonal(ker, 1.0)
+    return ker
 
 @jax.jit
 def binary_ker(x, y):
@@ -118,12 +133,32 @@ def rbf_column_ker(x, y, scale):
     dist_mat_stack = v(x, y)
     return jnp.prod(dist_mat_stack, axis=0)
 
+@jax.jit
+def rbf_column_ker_no_modist(x, y, scale):
+
+    def fn(u, v):
+        return rbf_ker_no_modist(u, v, scale)
+
+    v = vmap(fn, (1, 1))
+    dist_mat_stack = v(x, y)
+    return jnp.prod(dist_mat_stack, axis=0)
 
 @jax.jit
 def rbf_column_ker_equal(x, y, scale):
 
     def fn(u, v):
         return rbf_ker_equal(u, v, scale)
+
+    v = vmap(fn, (1, 1))
+    dist_mat_stack = v(x, y)
+    return jnp.prod(dist_mat_stack, axis=0)
+
+
+@jax.jit
+def rbf_column_ker_equal_no_modist(x, y, scale):
+
+    def fn(u, v):
+        return rbf_ker_equal_no_modist(u, v, scale)
 
     v = vmap(fn, (1, 1))
     dist_mat_stack = v(x, y)
@@ -222,7 +257,13 @@ def ker_mat(x1, x2, kernel="rbf", scale=1.0):
                 temp = rbf_ker_equal(jnp.array(x), jnp.array(y), scale)
             else:
                 temp = rbf_ker(jnp.array(x), jnp.array(y), scale)
-
+        if kernel == "rbf_no_modist":
+            equal = jnp.array_equal(x, y)
+            # print('two array is equal:', equal)
+            if equal:
+                temp = rbf_ker_equal_no_modist(jnp.array(x), jnp.array(y), scale)
+            else:
+                temp = rbf_ker_no_modist(jnp.array(x), jnp.array(y), scale) 
         if kernel == "binary":
             temp = binary_ker(jnp.array(x), jnp.array(y))
 
@@ -236,7 +277,13 @@ def ker_mat(x1, x2, kernel="rbf", scale=1.0):
                 temp = rbf_column_ker_equal(jnp.array(x), jnp.array(y), scale)
             else:
                 temp = rbf_column_ker(jnp.array(x), jnp.array(y), scale)
-
+        if kernel == "rbf_column_no_modist":
+            equal = jnp.array_equal(x, y)
+            # print('two array is equal:', equal)
+            if equal:
+                temp = rbf_column_ker_equal_no_modist(jnp.array(x), jnp.array(y), scale)
+            else:
+                temp = rbf_column_ker_no_modist(jnp.array(x), jnp.array(y), scale)           
         return temp
 
     if isinstance(kernel, list):
