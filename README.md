@@ -183,4 +183,20 @@ First execute the model selection program under `./model_selection` then run the
 For the simulated regression tasks, `sim_multisource_bin` and `sim_multisource_cont`, first launch execute the hyperparameter tuning program `test_proposed_onehot.py` for each regression task. Then run the experiments for the baseline (`sweep_baselines.py`) and proposed (`sweep_proposed.py`) methods.
 
 
+## References
+
+Please use the following metadata for the citation.
+
+```bibtex
+@inproceedings{tsai2024proxy,
+  title={Proxy Methods for Domain Adaptation},
+  author={Tsai, Katherine and Pfohl, Stephen R and Salaudeen, Olawale and Chiou, Nicole and Kusner, Matt and D’Amour, Alexander and Koyejo, Sanmi and Gretton, Arthur},
+  booktitle={International Conference on Artificial Intelligence and Statistics},
+  pages={3961--3969},
+  year={2024},
+  organization={PMLR}
+}
+```
+
+
 
